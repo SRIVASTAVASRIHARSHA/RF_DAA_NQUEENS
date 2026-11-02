@@ -18,8 +18,10 @@ __pycache__/
 .vscode/
 .idea/
 
-# Jupyter
-.ipynb_checkpoints/
+# Generated full datasets (recreate with python -m src.dataset_generator)
+data/training_data.csv
+data/train.csv
+data/validation.csv
 
 # Logs and temporary files
 *.log
