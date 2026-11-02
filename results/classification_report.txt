@@ -1,0 +1,8 @@
+                 precision    recall  f1-score   support
+
+cannot_complete     0.8849    0.9141    0.8993      7699
+can_complete        0.5210    0.4400    0.4771      1634
+
+       accuracy                         0.8311      9333
+      macro avg     0.7030    0.6771    0.6882      9333
+   weighted avg     0.8212    0.8311    0.8254      9333
