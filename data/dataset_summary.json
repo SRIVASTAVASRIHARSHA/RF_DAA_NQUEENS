@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "label_definition": "1 if exhaustive search finds at least one complete solution after the candidate placement; otherwise 0",
+  "label_method": "exhaustive row-wise backtracking with memoization",
+  "board_sizes": [4, 5, 6, 7, 8, 9, 10],
+  "max_board_size_supported_by_feature_schema": 12,
+  "total_candidate_samples": 46759,
+  "positive_samples": 8203,
+  "negative_samples": 38556,
+  "positive_rate": 0.17543146773883103,
+  "unique_candidate_parent_states": 30056,
+  "visited_partial_board_states": 45542,
+  "per_board_size": {
+    "4": {"candidate_samples": 16, "positive_samples": 8, "negative_samples": 8, "positive_rate": 0.5, "visited_partial_board_states": 15, "candidate_parent_states": 11, "dead_end_partial_states": 4, "memoized_prefixes": 16},
+    "5": {"candidate_samples": 53, "positive_samples": 45, "negative_samples": 8, "positive_rate": 0.8490566037735849, "visited_partial_board_states": 44, "candidate_parent_states": 40, "dead_end_partial_states": 4, "memoized_prefixes": 53},
+    "6": {"candidate_samples": 152, "positive_samples": 24, "negative_samples": 128, "positive_rate": 0.15789473684210525, "visited_partial_board_states": 149, "candidate_parent_states": 103, "dead_end_partial_states": 46, "memoized_prefixes": 152},
+    "7": {"candidate_samples": 551, "positive_samples": 233, "negative_samples": 318, "positive_rate": 0.42286751361161523, "visited_partial_board_states": 512, "candidate_parent_states": 358, "dead_end_partial_states": 154, "memoized_prefixes": 551},
+    "8": {"candidate_samples": 2056, "positive_samples": 550, "negative_samples": 1506, "positive_rate": 0.26750972762645914, "visited_partial_board_states": 1965, "candidate_parent_states": 1321, "dead_end_partial_states": 644, "memoized_prefixes": 2056},
+    "9": {"candidate_samples": 8393, "positive_samples": 2223, "negative_samples": 6170, "positive_rate": 0.2648635767901823, "visited_partial_board_states": 8042, "candidate_parent_states": 5458, "dead_end_partial_states": 2584, "memoized_prefixes": 8393},
+    "10": {"candidate_samples": 35538, "positive_samples": 5120, "negative_samples": 30418, "positive_rate": 0.14407113512296696, "visited_partial_board_states": 34815, "candidate_parent_states": 22765, "dead_end_partial_states": 12050, "memoized_prefixes": 35538}
+  },
+  "feature_columns": [
+    "n", "row", "candidate_col", "row_normalized",
+    "candidate_col_normalized", "candidate_center_distance",
+    "queen_col_0", "queen_col_1", "queen_col_2", "queen_col_3",
+    "queen_col_4", "queen_col_5", "queen_col_6", "queen_col_7",
+    "queen_col_8", "queen_col_9", "queen_col_10", "queen_col_11"
+  ],
+  "metadata_columns": ["state_id", "can_complete"],
+  "split": {
+    "method": "GroupShuffleSplit by state_id",
+    "test_size": 0.2,
+    "random_state": 42,
+    "train_samples": 37426,
+    "validation_samples": 9333,
+    "train_states": 24044,
+    "validation_states": 6012,
+    "overlapping_states": 0,
+    "train_positive_samples": 6569,
+    "train_negative_samples": 30857,
+    "validation_positive_samples": 1634,
+    "validation_negative_samples": 7699
+  }
+}
