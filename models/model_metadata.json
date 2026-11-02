@@ -1,0 +1,27 @@
+{
+  "model": "RandomForestClassifier",
+  "scikit_learn_version": "1.8.0",
+  "feature_columns": [
+    "n", "row", "candidate_col", "row_normalized",
+    "candidate_col_normalized", "candidate_center_distance",
+    "queen_col_0", "queen_col_1", "queen_col_2", "queen_col_3",
+    "queen_col_4", "queen_col_5", "queen_col_6", "queen_col_7",
+    "queen_col_8", "queen_col_9", "queen_col_10", "queen_col_11"
+  ],
+  "max_board_size_supported_by_features": 12,
+  "target_column": "can_complete",
+  "positive_class": 1,
+  "label_meaning": "candidate can lead to at least one complete solution",
+  "probability_interpretation": "ranking score; not guaranteed calibrated probability",
+  "training_configuration": {
+    "n_estimators": 150,
+    "criterion": "gini",
+    "max_features": "sqrt",
+    "max_depth": 18,
+    "min_samples_leaf": 3,
+    "class_weight": "balanced_subsample",
+    "random_state": 42
+  },
+  "model_artifact": "models/random_forest.joblib",
+  "model_artifact_git_policy": "excluded from Git; regenerate using python -m src.train_model"
+}
