@@ -23,5 +23,9 @@ data/training_data.csv
 data/train.csv
 data/validation.csv
 
+# Serialized model binaries (recreate with python -m src.train_model)
+models/*.joblib
+models/*.pkl
+
 # Logs and temporary files
 *.log
