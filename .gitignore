@@ -1,0 +1,25 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+
+# Environment variables / secrets
+.env
+.env.*
+
+# IDE settings
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs and temporary files
+*.log
