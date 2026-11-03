@@ -168,7 +168,7 @@ The dashboard contains five views:
 2. **Solver visualizer** — runs recursive, iterative, MRV, or ML-guided search and replays recorded placements/backtracks on a chessboard. For ML-guided search, it also displays candidate scores and ranks.
 3. **All-solutions explorer** — enumerates multiple valid boards with an optional cap and displays the first collected solutions.
 4. **Research extensions** — displays classifier comparison, feature ablation, and unseen-size generalization outputs when their experiment CSVs exist.
-5. **Model & dataset** — displays the recorded Random Forest validation metrics and dataset composition.
+5. **Model & dataset** — displays Random Forest validation metrics, dataset composition, feature-importance rankings, and the validation confusion matrix.
 
 Generate the final Markdown evaluation after completing the benchmark:
 
