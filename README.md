@@ -151,23 +151,23 @@ Do not publish timing values from a single run as a performance conclusion. Use 
 
 Launch the local Streamlit research dashboard from the project root:
 
-\`\`\`bash
+```bash
 streamlit run app.py
-\`\`\`
+```
 
 The dashboard contains three views:
 
-1. **Benchmark dashboard** — compares median/mean runtime, explored states, backtracks, candidate checks, memory, and ML inference overhead. It reads \`results/benchmark/benchmark_summary.csv\` and \`benchmark_runs.csv\`. A summary CSV can also be uploaded for inspection.
+1. **Benchmark dashboard** — compares median/mean runtime, explored states, backtracks, candidate checks, memory, and ML inference overhead. It reads `results/benchmark/benchmark_summary.csv` and `benchmark_runs.csv`. A summary CSV can also be uploaded for inspection.
 2. **Solver visualizer** — runs recursive, iterative, or ML-guided search and replays recorded place/backtrack events on a chessboard. For ML-guided search, it also displays the candidate scores and ranks recorded at each reached state.
 3. **Model & dataset** — displays the recorded Random Forest validation metrics and dataset composition.
 
 Generate the final Markdown evaluation after completing the benchmark:
 
-\`\`\`bash
+```bash
 python -m src.reporting
-\`\`\`
+```
 
-The generated file is \`results/final_report.md\`. It is built from the actual benchmark summary, environment metadata, model metrics, and dataset summary. It compares the median runtime and search effort per board size. It does not fabricate timing data or assume the ML solver is faster.
+The generated file is `results/final_report.md`. It is built from the actual benchmark summary, environment metadata, model metrics, and dataset summary. It compares the median runtime and search effort per board size. It does not fabricate timing data or assume the ML solver is faster.
 
 The report is Markdown so it can be reviewed and edited before converting it into the final submission format. Include the actual benchmark CSVs and metadata with the project archive so the conclusions are reproducible.
 
