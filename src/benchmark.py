@@ -316,6 +316,13 @@ def save_benchmark_outputs(
             "median peak Python-traced allocation from separate profiling runs; "
             "not whole-process resident memory"
         ),
+        "algorithm_metric_note": (
+            "MRV chooses an unassigned row dynamically and rebuilds legal domains "
+            "for all remaining rows at each state. Its candidate_checks therefore "
+            "counts domain evaluations and is not directly equivalent to the "
+            "fixed-row solvers' one-row-at-a-time candidate checks. Wall-clock "
+            "runtime is the direct cost comparison."
+        ),
     }
     if metadata:
         settings.update(metadata)
