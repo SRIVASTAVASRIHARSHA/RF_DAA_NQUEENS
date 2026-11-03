@@ -157,6 +157,11 @@ def solve_n_queens_ml(
     if model is None:
         model = load_trained_model(model_path)
     positive_class_index = _validate_model(model)
+    # Each prediction call scores only the legal moves in one row (at most N).
+    # Single-worker inference avoids joblib process/thread dispatch overhead for
+    # these tiny batches; it does not change the fitted trees or their scores.
+    if hasattr(model, "n_jobs"):
+        model.n_jobs = 1
 
     board = [-1] * n
     ranked_candidates: list[list[tuple[int, float]] | None] = [None] * n
