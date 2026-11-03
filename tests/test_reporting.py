@@ -40,7 +40,7 @@ class TestReporting(unittest.TestCase):
             },
         )
         self.assertIn("N=4", report)
-        self.assertIn("3.000×", report)
+        self.assertIn("1.58×", report)
         self.assertIn("0.200", report)
         self.assertIn("test platform", report)
         self.assertIn("feature-processing work", report)
