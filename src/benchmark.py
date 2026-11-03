@@ -34,6 +34,11 @@ from src.recursive_solver import solve_n_queens
 
 DEFAULT_SIZES = (4, 6, 8, 10, 12)
 ALGORITHMS = ("recursive", "iterative", "ml")
+ALGORITHM_COLORS = {
+    "recursive": "#64748B",  # Slate gray
+    "iterative": "#2563EB",  # Blue
+    "ml": "#F97316",  # Orange
+}
 
 
 def _validate_configuration(
@@ -253,10 +258,17 @@ def _save_line_plot(
                 yerr=[lower, upper],
                 marker="o",
                 capsize=4,
-                label=algorithm.capitalize(),
+                color=ALGORITHM_COLORS[algorithm],
+                label="ML-guided" if algorithm == "ml" else algorithm.capitalize(),
             )
         else:
-            axis.plot(x_values, y_values, marker="o", label=algorithm.capitalize())
+            axis.plot(
+                x_values,
+                y_values,
+                marker="o",
+                color=ALGORITHM_COLORS[algorithm],
+                label="ML-guided" if algorithm == "ml" else algorithm.capitalize(),
+            )
 
     axis.set_xlabel("Board size (N)")
     axis.set_ylabel(ylabel)
