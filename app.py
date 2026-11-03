@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -19,6 +20,10 @@ SUMMARY_PATH = BENCHMARK_DIR / "benchmark_summary.csv"
 RUNS_PATH = BENCHMARK_DIR / "benchmark_runs.csv"
 MODEL_METRICS_PATH = ROOT / "results" / "model_metrics.json"
 DATASET_SUMMARY_PATH = ROOT / "data" / "dataset_summary.json"
+ALGORITHM_COLOR_SCALE = alt.Scale(
+    domain=["Recursive", "Iterative", "ML-guided"],
+    range=["#64748B", "#2563EB", "#F97316"],
+)
 
 st.set_page_config(
     page_title="N-Queens Research Lab",
@@ -183,13 +188,28 @@ if page == "Benchmark dashboard":
             )
             selected_metric = available_metrics[selected_label]
 
-            chart_data = summary.pivot(
-                index="board_size",
-                columns="algorithm",
-                values=selected_metric,
-            ).sort_index()
             st.subheader(selected_label)
-            st.line_chart(chart_data, use_container_width=True)
+            comparison_chart = (
+                alt.Chart(summary)
+                .mark_line(point=alt.OverlayMarkDef(filled=True, size=75), strokeWidth=3)
+                .encode(
+                    x=alt.X("board_size:Q", title="Board size (N)", axis=alt.Axis(tickMinStep=1)),
+                    y=alt.Y(f"{selected_metric}:Q", title=selected_label),
+                    color=alt.Color(
+                        "algorithm:N",
+                        title="Algorithm",
+                        scale=ALGORITHM_COLOR_SCALE,
+                        sort=["Recursive", "Iterative", "ML-guided"],
+                    ),
+                    tooltip=[
+                        alt.Tooltip("board_size:Q", title="N"),
+                        alt.Tooltip("algorithm:N", title="Algorithm"),
+                        alt.Tooltip(f"{selected_metric}:Q", title=selected_label, format=".4f"),
+                    ],
+                )
+                .properties(height=380)
+            )
+            st.altair_chart(comparison_chart, use_container_width=True)
 
             st.subheader(f"Results for N={chosen_size}")
             metric_columns = st.columns(3)
