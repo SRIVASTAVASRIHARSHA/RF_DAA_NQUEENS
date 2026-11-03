@@ -24,6 +24,7 @@ class TestBenchmark(unittest.TestCase):
     def test_algorithm_color_mapping_is_consistent(self):
         self.assertEqual(ALGORITHM_COLORS["iterative"], "#2563EB")
         self.assertEqual(ALGORITHM_COLORS["ml"], "#F97316")
+        self.assertEqual(ALGORITHM_COLORS["mrv"], "#8B5CF6")
         self.assertNotEqual(ALGORITHM_COLORS["iterative"], ALGORITHM_COLORS["ml"])
 
     def test_runs_three_solvers_and_records_timing_and_search_metrics(self):
@@ -35,8 +36,8 @@ class TestBenchmark(unittest.TestCase):
             model=SimpleRankingModel(),
         )
 
-        self.assertEqual(len(raw), 3 * 2)
-        self.assertEqual(set(raw["algorithm"]), {"recursive", "iterative", "ml"})
+        self.assertEqual(len(raw), 4 * 2)
+        self.assertEqual(set(raw["algorithm"]), {"recursive", "iterative", "mrv", "ml"})
         self.assertTrue((raw["execution_time_ms"] > 0).all())
         self.assertTrue((raw["inference_time_ms"] >= 0).all())
         self.assertTrue(
@@ -46,7 +47,7 @@ class TestBenchmark(unittest.TestCase):
         self.assertTrue(
             (raw.loc[raw["algorithm"] != "ml", "inference_time_ms"] == 0).all()
         )
-        self.assertEqual(len(summary), 3)
+        self.assertEqual(len(summary), 4)
         self.assertTrue(summary["all_results_correct"].all())
         self.assertTrue((summary["peak_traced_memory_kb"] > 0).all())
 
