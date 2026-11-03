@@ -158,6 +158,8 @@ Launch the local Streamlit research dashboard from the project root:
 streamlit run app.py
 ```
 
+The benchmark dashboard includes a shared-chart Y-axis toggle for **Linear** and **Logarithmic** scales. Logarithmic mode is enabled only when every value in the selected metric is strictly positive; metrics containing zero, negative, or missing values stay on a linear axis.
+
 The dashboard contains three views:
 
 1. **Benchmark dashboard** — compares median/mean runtime, explored states, backtracks, candidate checks, memory, and ML inference overhead. It reads `results/benchmark/benchmark_summary.csv` and `benchmark_runs.csv`. A summary CSV can also be uploaded for inspection.
