@@ -48,8 +48,13 @@ def _comparison_sentence(n: int, rows: dict[str, dict[str, Any]]) -> str:
     recursive = rows["recursive"]
     iterative = rows["iterative"]
     ml = rows["ml"]
+    conventional_rows = [
+        (name, rows[name])
+        for name in ("recursive", "iterative", "mrv")
+        if name in rows
+    ]
     best_conventional_name, best_conventional = min(
-        (("recursive", recursive), ("iterative", iterative)),
+        conventional_rows,
         key=lambda item: float(item[1]["median_execution_time_ms"]),
     )
     best_conventional_ms = float(best_conventional["median_execution_time_ms"])
@@ -69,8 +74,8 @@ def _comparison_sentence(n: int, rows: dict[str, dict[str, Any]]) -> str:
         )
 
     conventional_states = min(
-        float(recursive["median_explored_states"]),
-        float(iterative["median_explored_states"]),
+        float(row["median_explored_states"])
+        for _, row in conventional_rows
     )
     ml_states = float(ml["median_explored_states"])
     if conventional_states > 0:
@@ -108,7 +113,7 @@ def build_final_report(
     dataset = dataset_summary or {}
     frame = benchmark_summary.copy()
     frame["algorithm"] = frame["algorithm"].astype(str).str.lower()
-    frame = frame[frame["algorithm"].isin(("recursive", "iterative", "ml"))]
+    frame = frame[frame["algorithm"].isin(("recursive", "iterative", "mrv", "ml"))]
     if frame.empty:
         raise ValueError("benchmark summary contains no recognized solver rows")
 
@@ -200,7 +205,7 @@ def build_final_report(
     ])
 
     for n in sorted(grouped):
-        for algorithm in ("recursive", "iterative", "ml"):
+        for algorithm in ("recursive", "iterative", "mrv", "ml"):
             row = grouped[n].get(algorithm)
             if not row:
                 continue
@@ -269,6 +274,78 @@ def build_final_report(
     return "\n".join(lines)
 
 
+def _append_research_tables(
+    report: str,
+    research_dir: str | Path = "results/research",
+) -> str:
+    """Append optional model/ablation/generalization CSV tables if present."""
+    directory = Path(research_dir)
+    sections = (
+        (
+            "Classifier comparison",
+            "model_comparison.csv",
+            (
+                "model",
+                "balanced_accuracy",
+                "f1_positive",
+                "roc_auc",
+                "pr_auc",
+                "training_seconds",
+            ),
+        ),
+        (
+            "Feature ablation",
+            "feature_ablation.csv",
+            (
+                "model",
+                "feature_count",
+                "balanced_accuracy",
+                "f1_positive",
+                "roc_auc",
+                "pr_auc",
+            ),
+        ),
+        (
+            "Unseen-size generalization",
+            "unseen_size_generalization.csv",
+            (
+                "board_size",
+                "status",
+                "balanced_accuracy",
+                "f1_positive",
+                "roc_auc",
+                "pr_auc",
+                "samples",
+            ),
+        ),
+    )
+    appendix: list[str] = []
+    for title, filename, wanted_columns in sections:
+        path = directory / filename
+        if not path.is_file():
+            continue
+        try:
+            frame = pd.read_csv(path)
+        except (OSError, pd.errors.ParserError):
+            continue
+        columns = [column for column in wanted_columns if column in frame.columns]
+        if frame.empty or not columns:
+            continue
+        appendix.extend(["", f"## Additional experiment: {title}", ""])
+        appendix.append("| " + " | ".join(columns) + " |")
+        appendix.append("|" + "|".join(["---"] * len(columns)) + "|")
+        for row in frame[columns].to_dict(orient="records"):
+            values = []
+            for column in columns:
+                value = row.get(column)
+                if isinstance(value, (float, int)) and not pd.isna(value):
+                    values.append(f"{value:.4f}" if isinstance(value, float) else str(value))
+                else:
+                    values.append(str(value) if value is not None else "N/A")
+            appendix.append("| " + " | ".join(values) + " |")
+    return report + ("\n" + "\n".join(appendix) if appendix else "")
+
+
 def generate_report(
     benchmark_csv: str | Path = "results/benchmark/benchmark_summary.csv",
     metadata_json: str | Path = "results/benchmark/benchmark_metadata.json",
@@ -290,6 +367,7 @@ def generate_report(
         model_metrics=_read_json(model_metrics_json),
         dataset_summary=_read_json(dataset_summary_json),
     )
+    report = _append_research_tables(report)
     destination = Path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(report, encoding="utf-8")
