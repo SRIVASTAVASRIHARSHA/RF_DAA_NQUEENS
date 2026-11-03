@@ -66,16 +66,9 @@ ABLATIONS = {
             "candidate_center_distance",
         }
     ),
-    "board_and_candidate_only": tuple(
+    "without_absolute_positions": tuple(
         feature for feature in FEATURE_COLUMNS
-        if feature in {
-            "n",
-            "row",
-            "candidate_col",
-            "row_normalized",
-            "candidate_col_normalized",
-            "candidate_center_distance",
-        }
+        if feature not in {"row", "candidate_col"}
     ),
 }
 
