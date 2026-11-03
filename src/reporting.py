@@ -43,7 +43,7 @@ def _fmt(value: Any, digits: int = 3) -> str:
 def _comparison_sentence(n: int, rows: dict[str, dict[str, Any]]) -> str:
     required = ("recursive", "iterative", "ml")
     if any(name not in rows for name in required):
-        return f"- N={n}: incomplete algorithm coverage; no three-way timing conclusion is drawn."
+        return f"- N={n}: incomplete algorithm coverage; a complete comparison is not available."
 
     recursive = rows["recursive"]
     iterative = rows["iterative"]
@@ -122,7 +122,7 @@ def build_final_report(
         grouped.setdefault(int(record["board_size"]), {})[record["algorithm"]] = record
 
     lines = [
-        "# Experimental Evaluation: Recursive, Iterative, and ML-Guided N-Queens",
+        "# Experimental Evaluation: Recursive, Iterative, MRV, and ML-Guided N-Queens",
         "",
         "## Abstract",
         "",
@@ -210,7 +210,7 @@ def build_final_report(
             if not row:
                 continue
             lines.append(
-                f"| {n} | {algorithm.capitalize()} | "
+                f"| {n} | {("MRV" if algorithm == "mrv" else "ML-guided" if algorithm == "ml" else algorithm.capitalize())} | "
                 f"{_fmt(row.get('median_execution_time_ms'))} | "
                 f"{_fmt(row.get('mean_execution_time_ms'))} | "
                 f"{_fmt(row.get('median_explored_states'), 1)} | "
