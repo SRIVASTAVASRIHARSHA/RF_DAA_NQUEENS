@@ -133,6 +133,9 @@ Optional arguments:
 - `--model-path models/random_forest.joblib`: trusted local trained model.
 - `--output-dir results/benchmark`: output directory.
 
+
+**Consistent algorithm colors:** Recursive = slate gray (`#64748B`), Iterative = blue (`#2563EB`), and ML-guided = orange (`#F97316`). The same mapping is used in generated benchmark plots and the Streamlit dashboard.
+
 The runner writes:
 
 - `benchmark_runs.csv`: one row per timed run.
