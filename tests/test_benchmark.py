@@ -27,7 +27,7 @@ class TestBenchmark(unittest.TestCase):
         self.assertEqual(ALGORITHM_COLORS["mrv"], "#8B5CF6")
         self.assertNotEqual(ALGORITHM_COLORS["iterative"], ALGORITHM_COLORS["ml"])
 
-    def test_runs_three_solvers_and_records_timing_and_search_metrics(self):
+    def test_runs_four_solvers_and_records_timing_and_search_metrics(self):
         raw, summary = run_benchmarks(
             sizes=(4,),
             repeats=2,
