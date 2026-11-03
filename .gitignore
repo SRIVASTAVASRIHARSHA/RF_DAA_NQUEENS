@@ -38,3 +38,6 @@ results/benchmark/
 
 # Generated final report (recreate from benchmark outputs)
 results/final_report.md
+
+# Generated model comparison, ablation, and generalization outputs
+results/research/
