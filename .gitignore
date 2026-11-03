@@ -35,3 +35,6 @@ results/*.jpg
 
 # Generated benchmark CSV, JSON, and plots
 results/benchmark/
+
+# Generated final report (recreate from benchmark outputs)
+results/final_report.md
