@@ -64,6 +64,24 @@ class TestMLGuidedSolver(unittest.TestCase):
                 )
                 self.assertIsNone(solution)
 
+    def test_solver_finds_solutions_for_all_supported_solvable_small_sizes(self):
+        for n in (4, 5, 6, 7, 8):
+            with self.subTest(n=n):
+                solution, _, _ = solve_n_queens_ml(
+                    n, model=PreferColumnZeroModel()
+                )
+                self.assertTrue(is_valid_solution(solution))
+
+    def test_empty_board_ranking_contains_every_initial_column(self):
+        _, _, events = solve_n_queens_ml(6, model=PreferColumnZeroModel())
+        first_ranking = next(
+            event for event in events if event["action"] == "rank_candidates"
+        )
+        self.assertEqual(
+            {item["col"] for item in first_ranking["candidates"]},
+            set(range(6)),
+        )
+
     def test_rejects_board_size_outside_feature_schema(self):
         with self.assertRaises(ValueError):
             solve_n_queens_ml(13, model=PreferColumnZeroModel())
