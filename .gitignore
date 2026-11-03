@@ -32,5 +32,6 @@ results/*.jpg
 
 # Temporary files
 *.log
+
 # Generated benchmark CSV, JSON, and plots
 results/benchmark/
