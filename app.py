@@ -712,6 +712,29 @@ else:
     else:
         st.info("Dataset summary is not available in data/dataset_summary.json.")
 
+    feature_importance_path = ROOT / "results" / "feature_importance.csv"
+    confusion_matrix_path = ROOT / "results" / "confusion_matrix.png"
+
+    if feature_importance_path.is_file():
+        st.subheader("Random Forest feature importance")
+        try:
+            feature_importance = pd.read_csv(feature_importance_path)
+            if {"feature", "importance"}.issubset(feature_importance.columns):
+                top_features = feature_importance.sort_values(
+                    "importance", ascending=False
+                ).head(15)
+                st.bar_chart(
+                    top_features.set_index("feature")[["importance"]],
+                    width="stretch",
+                )
+                st.dataframe(top_features, width="stretch", hide_index=True)
+        except (OSError, pd.errors.ParserError) as exc:
+            st.warning(f"Could not load feature importance: {exc}")
+
+    if confusion_matrix_path.is_file():
+        st.subheader("Validation confusion matrix")
+        st.image(str(confusion_matrix_path), width="stretch")
+
     st.divider()
     st.subheader("Generate final experimental report")
     st.write(
