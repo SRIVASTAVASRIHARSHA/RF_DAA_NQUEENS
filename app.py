@@ -189,9 +189,14 @@ if page == "Benchmark dashboard":
             selected_metric = available_metrics[selected_label]
 
             st.subheader(selected_label)
-            comparison_base = (
+            # One shared set of axes makes every algorithm comparable at the
+            # same N and on the same metric scale.
+            comparison_chart = (
                 alt.Chart(summary)
-                .mark_line(point=alt.OverlayMarkDef(filled=True, size=110), strokeWidth=3)
+                .mark_line(
+                    point=alt.OverlayMarkDef(filled=True, size=120),
+                    strokeWidth=3,
+                )
                 .encode(
                     x=alt.X(
                         "board_size:Q",
@@ -221,6 +226,8 @@ if page == "Benchmark dashboard":
                             range=["square", "circle", "triangle"],
                         ),
                     ),
+                    detail=alt.Detail("algorithm:N"),
+                    order=alt.Order("algorithm:N"),
                     tooltip=[
                         alt.Tooltip("board_size:Q", title="N"),
                         alt.Tooltip("algorithm:N", title="Algorithm"),
@@ -231,19 +238,26 @@ if page == "Benchmark dashboard":
                         ),
                     ],
                 )
-                .properties(height=300)
+                .properties(height=420)
             )
-            # Separate panels prevent identical Recursive/Iterative series from
-            # hiding one another when their measured values overlap exactly.
-            comparison_chart = comparison_base.facet(
-                column=alt.Column(
-                    "algorithm:N",
-                    sort=["Recursive", "Iterative", "ML-guided"],
-                    header=alt.Header(title=None, labelFontSize=13),
-                ),
-                spacing=14,
-            ).resolve_scale(y="shared")
             st.altair_chart(comparison_chart, width="stretch")
+
+            recursive_values = size_frame.loc[
+                size_frame["algorithm"] == "Recursive", selected_metric
+            ]
+            iterative_values = size_frame.loc[
+                size_frame["algorithm"] == "Iterative", selected_metric
+            ]
+            if (
+                not recursive_values.empty
+                and not iterative_values.empty
+                and float(recursive_values.iloc[0]) == float(iterative_values.iloc[0])
+            ):
+                st.caption(
+                    "Recursive and Iterative overlap where their measured values are "
+                    "identical. Both series are included; hover over the shared points "
+                    "to inspect the algorithm values."
+                )
 
 
             st.subheader(f"Results for N={chosen_size}")
