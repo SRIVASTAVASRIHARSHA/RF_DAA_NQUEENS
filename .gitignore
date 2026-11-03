@@ -1,31 +1,34 @@
-# Python virtual environments
+# Python virtual environment
 .venv/
 venv/
+env/
 
-# Python bytecode and caches
+# Python cache
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
 
-# macOS
-.DS_Store
-
-# Environment variables / secrets
-.env
-.env.*
+# Jupyter
+.ipynb_checkpoints/
 
 # IDE settings
 .vscode/
 .idea/
 
-# Generated full datasets (recreate with python -m src.dataset_generator)
-data/training_data.csv
-data/train.csv
-data/validation.csv
+# macOS
+.DS_Store
 
-# Serialized model binaries (recreate with python -m src.train_model)
-models/*.joblib
+# Environment variables and secrets
+.env
+.env.*
+
+# Generated model files
 models/*.pkl
+models/*.joblib
 
-# Logs and temporary files
+# Generated results
+results/*.png
+results/*.jpg
+
+# Temporary files
 *.log
