@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from src.benchmark import run_benchmarks, save_benchmark_outputs
+from src.benchmark import ALGORITHM_COLORS, run_benchmarks, save_benchmark_outputs
 from src.feature_extraction import FEATURE_COLUMNS
 
 
@@ -21,6 +21,11 @@ class SimpleRankingModel:
 
 
 class TestBenchmark(unittest.TestCase):
+    def test_algorithm_color_mapping_is_consistent(self):
+        self.assertEqual(ALGORITHM_COLORS["iterative"], "#2563EB")
+        self.assertEqual(ALGORITHM_COLORS["ml"], "#F97316")
+        self.assertNotEqual(ALGORITHM_COLORS["iterative"], ALGORITHM_COLORS["ml"])
+
     def test_runs_three_solvers_and_records_timing_and_search_metrics(self):
         raw, summary = run_benchmarks(
             sizes=(4,),
