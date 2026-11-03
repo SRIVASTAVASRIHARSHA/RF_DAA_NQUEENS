@@ -64,45 +64,45 @@ The ranking result is a preliminary improvement only. It does not establish an e
 
 Python 3.13 is recommended.
 
-\`\`\`bash
+```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-\`\`\`
+```
 
 ## Run the conventional solvers
 
-\`\`\`bash
+```bash
 python main.py --size 8 --algorithm both
-\`\`\`
+```
 
 ## Generate the dataset
 
-\`\`\`bash
+```bash
 python -m src.dataset_generator
-\`\`\`
+```
 
 This creates data/training_data.csv, data/train.csv, data/validation.csv, and data/dataset_summary.json. The generated full CSVs are excluded from Git because they can be reproduced.
 
 ## Train the Random Forest
 
-\`\`\`bash
+```bash
 python -m src.train_model
-\`\`\`
+```
 
 This creates models/random_forest.joblib locally.
 
 ## Run the ML-guided solver
 
-\`\`\`bash
+```bash
 python main.py --size 8 --algorithm ml
-\`\`\`
+```
 
 Run all three solvers sequentially:
 
-\`\`\`bash
+```bash
 python main.py --size 8 --algorithm all
-\`\`\`
+```
 
 The ML solver requires the locally trained models/random_forest.joblib file. The Joblib file is excluded from Git; load only trusted model files.
 
@@ -112,45 +112,45 @@ The benchmark runner measures recursive, iterative, and ML-guided search on the 
 
 Run a quick smoke benchmark first:
 
-\`\`\`bash
+```bash
 python -m src.benchmark --sizes 4 6 8 --repeats 5 --warmups 1 --memory-repeats 1
-\`\`\`
+```
 
 Run the full default benchmark:
 
-\`\`\`bash
+```bash
 python -m src.benchmark
-\`\`\`
+```
 
 Optional arguments:
 
-- \`--sizes 4 6 8 10 12\`: board sizes (maximum N=12 for the current feature schema).
-- \`--repeats 30\`: timed runs per algorithm and board size.
-- \`--warmups 3\`: untimed warm-up runs per algorithm and size.
-- \`--memory-repeats 3\`: separate memory-profiling runs.
-- \`--seed 42\`: deterministic rotation of solver order.
-- \`--model-path models/random_forest.joblib\`: trusted local trained model.
-- \`--output-dir results/benchmark\`: output directory.
+- `--sizes 4 6 8 10 12`: board sizes (maximum N=12 for the current feature schema).
+- `--repeats 30`: timed runs per algorithm and board size.
+- `--warmups 3`: untimed warm-up runs per algorithm and size.
+- `--memory-repeats 3`: separate memory-profiling runs.
+- `--seed 42`: deterministic rotation of solver order.
+- `--model-path models/random_forest.joblib`: trusted local trained model.
+- `--output-dir results/benchmark`: output directory.
 
 The runner writes:
 
-- \`benchmark_runs.csv\`: one row per timed run.
-- \`benchmark_summary.csv\`: mean, median, standard deviation, interquartile range, search metrics, and memory summary.
-- \`benchmark_metadata.json\`: Python/platform details and run configuration.
-- \`benchmark_runtime.png\`, \`benchmark_explored_states.png\`, and \`benchmark_candidate_checks.png\`.
-- \`benchmark_inference_overhead.png\` and \`benchmark_memory.png\`.
+- `benchmark_runs.csv`: one row per timed run.
+- `benchmark_summary.csv`: mean, median, standard deviation, interquartile range, search metrics, and memory summary.
+- `benchmark_metadata.json`: Python/platform details and run configuration.
+- `benchmark_runtime.png`, `benchmark_explored_states.png`, and `benchmark_candidate_checks.png`.
+- `benchmark_inference_overhead.png` and `benchmark_memory.png`.
 
-**Timing interpretation:** total execution time wraps the complete solver call. For ML this includes candidate feature extraction, DataFrame construction, \`predict_proba\`, ranking, and backtracking. Model loading is excluded. The separate inference column is the time spent inside the model's \`predict_proba\` call only; it is a subset of ML total time and must not be added again. Recursive and iterative solvers have zero model inference time.
+**Timing interpretation:** total execution time wraps the complete solver call. For ML this includes candidate feature extraction, DataFrame construction, `predict_proba`, ranking, and backtracking. Model loading is excluded. The separate inference column is the time spent inside the model's `predict_proba` call only; it is a subset of ML total time and must not be added again. Recursive and iterative solvers have zero model inference time.
 
-Memory is measured in separate runs using Python's \`tracemalloc\`, reported as peak Python-tracked allocation. It is not whole-process resident memory and may not include all native-library allocations. Memory profiling is kept outside timed runs to avoid distorting wall-clock measurements.
+Memory is measured in separate runs using Python's `tracemalloc`, reported as peak Python-tracked allocation. It is not whole-process resident memory and may not include all native-library allocations. Memory profiling is kept outside timed runs to avoid distorting wall-clock measurements.
 
 Do not publish timing values from a single run as a performance conclusion. Use the repeated-run summary, report the hardware/software environment from the metadata file, and discuss both search effort and total time. A reduction in explored states does not automatically imply a faster wall-clock result.
 
 ## Tests
 
-\`\`\`bash
+```bash
 python -m unittest discover -s tests -v
-\`\`\`
+```
 
 ## Next phases
 
