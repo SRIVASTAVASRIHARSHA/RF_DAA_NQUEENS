@@ -11,14 +11,16 @@ A comparative DAA project investigating the N-Queens problem through conventiona
 - **Phase 5 complete:** ML-guided iterative solver with probability-ranked candidate ordering and complete backtracking.
 - **Phase 6 implementation complete:** repeatable benchmark runner for all three solvers, per-run and summary CSVs, runtime/search/memory plots, and benchmark tests. The actual experiment results must be generated on the target Mac because timings are hardware- and environment-dependent.
 - **Phase 7 implementation complete:** Streamlit benchmark dashboard, solver-event replay with ML candidate rankings, model/dataset diagnostics, and a Markdown report generator driven by real experiment outputs.
+- **Research extensions implemented:** MRV heuristic baseline, comparison of three classifier families, feature-group ablation, unseen-board-size generalization, and all-solutions enumeration.
 
-The dashboard and report still need to be exercised locally against the actual benchmark files before final submission.
+The dashboard and report still need local verification. The additional research experiment commands generate evidence files; they are not run automatically and must not be presented as completed measurements until executed.
 
 ## Algorithms
 
 1. **Recursive backtracking** — uses the call stack.
 2. **Iterative backtracking** — uses an explicit next_column array.
-3. **ML-guided iterative backtracking** — uses the trained Random Forest to rank every legal candidate, then explores candidates iteratively with backtracking.
+3. **MRV heuristic backtracking** — dynamically selects the unassigned row with the fewest legal columns (Minimum Remaining Values), then backtracks.
+4. **ML-guided iterative backtracking** — uses the trained Random Forest to rank every legal candidate, then explores candidates iteratively with backtracking.
 
 ## ML-guided search
 
@@ -99,7 +101,7 @@ This creates models/random_forest.joblib locally.
 python main.py --size 8 --algorithm ml
 ```
 
-Run all three solvers sequentially:
+Run the four first-solution solvers sequentially:
 
 ```bash
 python main.py --size 8 --algorithm all
@@ -109,7 +111,7 @@ The ML solver requires the locally trained models/random_forest.joblib file. The
 
 ## Phase 6 — Benchmark all three solvers
 
-The benchmark runner measures recursive, iterative, and ML-guided search on the same board sizes. It loads the trained model **before** timing begins, performs warm-up runs, rotates solver execution order between repeats using a fixed seed, and reports both median and mean values. The default configuration uses N=4, 6, 8, 10, and 12; 30 timed repetitions; 3 warm-ups; and 3 separate memory-profiling runs.
+The benchmark runner measures recursive, iterative, MRV, and ML-guided search on the same board sizes. It loads the trained model **before** timing begins, performs warm-up runs, rotates solver execution order between repeats using a fixed seed, and reports both median and mean values. The default configuration uses N=4, 6, 8, 10, and 12; 30 timed repetitions; 3 warm-ups; and 3 separate memory-profiling runs.
 
 Run a quick smoke benchmark first:
 
@@ -175,6 +177,69 @@ python -m src.reporting
 The generated file is `results/final_report.md`. It is built from the actual benchmark summary, environment metadata, model metrics, and dataset summary. It compares the median runtime and search effort per board size. It does not fabricate timing data or assume the ML solver is faster.
 
 The report is Markdown so it can be reviewed and edited before converting it into the final submission format. Include the actual benchmark CSVs and metadata with the project archive so the conclusions are reproducible.
+
+## Research extensions
+
+### MRV heuristic baseline
+
+Run MRV independently:
+
+~~~bash
+python main.py --size 8 --algorithm mrv
+~~~
+
+MRV selects the unassigned row with the fewest currently legal columns. Ties are broken by ascending row number and candidate columns are tested in ascending order. Unlike the original row-wise solvers, MRV assigns rows out of order. Its candidate-check counter therefore counts domain evaluations across all remaining rows and should not be treated as exactly equivalent to the fixed-row solvers' candidate-check counter. Compare total elapsed time for direct runtime cost.
+
+The benchmark and dashboard now include MRV as a fourth algorithm.
+
+### All-solutions enumeration
+
+Enumerate every solution for a board size:
+
+~~~bash
+python main.py --size 8 --all-solutions
+~~~
+
+For larger N, cap the number of solutions:
+
+~~~bash
+python main.py --size 12 --all-solutions --max-solutions 100
+~~~
+
+The result reports whether enumeration stopped at the cap. A capped run does not prove that the displayed solutions are exhaustive. Event collection is disabled in the CLI to avoid storing a very large replay trace.
+
+### Classifier comparison, feature ablation, and generalization
+
+Run the research experiments:
+
+~~~bash
+python -m src.research_experiments
+~~~
+
+The default experiment trains on board sizes N=4–8, performs a grouped validation split by partial-board state, and evaluates generalization on entirely held-out N=9 and N=10.
+
+The experiment runner produces:
+
+- **Classifier comparison:** Random Forest, Extra Trees, and Gradient Boosting, using the same grouped validation split.
+- **Feature ablation:** Random Forest reruns after removing predefined feature groups, including partial-board prefix features, normalized position features, candidate geometry, and absolute row/column positions.
+- **Unseen-size generalization:** a Random Forest trained only on the training-size dataset, then evaluated separately on N values absent from training.
+
+Outputs are saved in results/research/:
+
+- model_comparison.csv and model_comparison_balanced_accuracy.png
+- feature_ablation.csv and feature_ablation_balanced_accuracy.png
+- unseen_size_generalization.csv and unseen_size_generalization.png (when held-out sizes contain both labels)
+- research_experiment_metadata.json
+
+Optional heavier run using N=11 and N=12 as held-out board sizes:
+
+~~~bash
+python -m src.research_experiments --train-sizes 4 5 6 7 8 9 10 --unseen-sizes 11 12
+~~~
+
+This may require substantially more memory and compute because exhaustive dataset construction expands quickly with N. The default N=9,10 generalization experiment is the practical starting point.
+
+The Streamlit Research extensions page reads these CSV outputs after the command has been run. The final report generator appends any available classifier-comparison, ablation, and generalization tables. It does not invent missing experimental measurements.
 
 ## Tests
 
