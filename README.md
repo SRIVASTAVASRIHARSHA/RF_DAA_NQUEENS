@@ -9,7 +9,7 @@ A comparative DAA project investigating the N-Queens problem through conventiona
 - **Phase 3 complete:** exhaustive candidate dataset generation, fixed-width feature extraction, reproducible train/validation split grouped by partial-board state.
 - **Phase 4 complete:** Random Forest training pipeline, validation metrics, candidate-ranking evaluation, feature importance, and confusion-matrix reporting.
 - **Phase 5 complete:** ML-guided iterative solver with probability-ranked candidate ordering and complete backtracking.
-- **Phase 6 implementation complete:** repeatable benchmark runner for all three solvers, per-run and summary CSVs, runtime/search/memory plots, and benchmark tests. The actual experiment results must be generated on the target Mac because timings are hardware- and environment-dependent.
+- **Phase 6 implementation complete:** repeatable benchmark runner for all four solvers, per-run and summary CSVs, runtime/search/memory plots, and benchmark tests. The actual experiment results must be generated on the target Mac because timings are hardware- and environment-dependent.
 - **Phase 7 implementation complete:** Streamlit benchmark dashboard, solver-event replay with ML candidate rankings, model/dataset diagnostics, and a Markdown report generator driven by real experiment outputs.
 - **Research extensions implemented:** MRV heuristic baseline, comparison of three classifier families, feature-group ablation, unseen-board-size generalization, and all-solutions enumeration.
 
@@ -109,7 +109,7 @@ python main.py --size 8 --algorithm all
 
 The ML solver requires the locally trained models/random_forest.joblib file. The Joblib file is excluded from Git; load only trusted model files.
 
-## Phase 6 — Benchmark all three solvers
+## Phase 6 — Benchmark all four solvers
 
 The benchmark runner measures recursive, iterative, MRV, and ML-guided search on the same board sizes. It loads the trained model **before** timing begins, performs warm-up runs, rotates solver execution order between repeats using a fixed seed, and reports both median and mean values. The default configuration uses N=4, 6, 8, 10, and 12; 30 timed repetitions; 3 warm-ups; and 3 separate memory-profiling runs.
 
@@ -136,7 +136,7 @@ Optional arguments:
 - `--output-dir results/benchmark`: output directory.
 
 
-**Consistent algorithm colors:** Recursive = slate gray (`#64748B`), Iterative = blue (`#2563EB`), and ML-guided = orange (`#F97316`). The same mapping is used in generated benchmark plots and the Streamlit dashboard.
+**Consistent algorithm colors:** Recursive = slate gray (`#64748B`), Iterative = blue (`#2563EB`), MRV = violet (`#8B5CF6`), and ML-guided = orange (`#F97316`). The same mapping is used in generated benchmark plots and the Streamlit dashboard.
 
 The runner writes:
 
@@ -146,7 +146,7 @@ The runner writes:
 - `benchmark_runtime.png`, `benchmark_explored_states.png`, and `benchmark_candidate_checks.png`.
 - `benchmark_inference_overhead.png` and `benchmark_memory.png`.
 
-**Timing interpretation:** total execution time wraps the complete solver call. For ML this includes candidate feature extraction, DataFrame construction, `predict_proba`, ranking, and backtracking. Model loading is excluded. The separate inference column is the time spent inside the model's `predict_proba` call only; it is a subset of ML total time and must not be added again. Recursive and iterative solvers have zero model inference time.
+**Timing interpretation:** total execution time wraps the complete solver call. For ML this includes candidate feature extraction, DataFrame construction, `predict_proba`, ranking, and backtracking. Model loading is excluded. The separate inference column is the time spent inside the model's `predict_proba` call only; it is a subset of ML total time and must not be added again. Recursive, iterative, and MRV solvers have zero model inference time. MRV dynamically recomputes legal domains across unassigned rows; its candidate-check count has a different operational meaning from the fixed-row solvers.
 
 Memory is measured in separate runs using Python's `tracemalloc`, reported as peak Python-tracked allocation. It is not whole-process resident memory and may not include all native-library allocations. Memory profiling is kept outside timed runs to avoid distorting wall-clock measurements.
 
@@ -162,11 +162,13 @@ streamlit run app.py
 
 The benchmark dashboard includes a shared-chart Y-axis toggle for **Linear** and **Logarithmic** scales. Logarithmic mode is selected by default for runtime and memory metrics when every value is strictly positive, making small conventional-solver timings more visible beside the ML-guided timings. Linear remains available. Metrics containing zero, negative, or missing values stay on a linear axis. The chart layers the Recursive dashed line above the Iterative solid line and uses hollow square/circle markers so closely overlapping measurements remain distinguishable without altering the plotted values.
 
-The dashboard contains three views:
+The dashboard contains five views:
 
-1. **Benchmark dashboard** — compares median/mean runtime, explored states, backtracks, candidate checks, memory, and ML inference overhead. It reads `results/benchmark/benchmark_summary.csv` and `benchmark_runs.csv`. A summary CSV can also be uploaded for inspection.
-2. **Solver visualizer** — runs recursive, iterative, or ML-guided search and replays recorded place/backtrack events on a chessboard. For ML-guided search, it also displays the candidate scores and ranks recorded at each reached state.
-3. **Model & dataset** — displays the recorded Random Forest validation metrics and dataset composition.
+1. **Benchmark dashboard** — compares median/mean runtime, explored states, backtracks, candidate checks, memory, and ML inference overhead for all four algorithms. It reads `results/benchmark/benchmark_summary.csv` and `benchmark_runs.csv`. A summary CSV can also be uploaded for inspection.
+2. **Solver visualizer** — runs recursive, iterative, MRV, or ML-guided search and replays recorded placements/backtracks on a chessboard. For ML-guided search, it also displays candidate scores and ranks.
+3. **All-solutions explorer** — enumerates multiple valid boards with an optional cap and displays the first collected solutions.
+4. **Research extensions** — displays classifier comparison, feature ablation, and unseen-size generalization outputs when their experiment CSVs exist.
+5. **Model & dataset** — displays the recorded Random Forest validation metrics and dataset composition.
 
 Generate the final Markdown evaluation after completing the benchmark:
 
@@ -174,7 +176,7 @@ Generate the final Markdown evaluation after completing the benchmark:
 python -m src.reporting
 ```
 
-The generated file is `results/final_report.md`. It is built from the actual benchmark summary, environment metadata, model metrics, and dataset summary. It compares the median runtime and search effort per board size. It does not fabricate timing data or assume the ML solver is faster.
+The generated file is `results/final_report.md`. It is built from the actual benchmark summary, environment metadata, model metrics, and dataset summary. It compares the median runtime and search effort per board size, includes MRV when present in the benchmark CSV, and appends model-comparison, ablation, and generalization tables when those experiment outputs exist. It does not fabricate timing data or assume the ML solver is faster.
 
 The report is Markdown so it can be reviewed and edited before converting it into the final submission format. Include the actual benchmark CSVs and metadata with the project archive so the conclusions are reproducible.
 
@@ -249,7 +251,8 @@ python -m unittest discover -s tests -v
 
 ## Next phases
 
-- Execute the Phase 6 benchmark locally, inspect repeated-run CSVs and plots, and interpret measured performance.
-- Run the Streamlit dashboard locally and review its benchmark, replay, and model/dataset views.
-- Generate and review the final report after the actual benchmark experiment has completed.
-- Prepare final submission formatting and viva material.
+- Run the updated four-algorithm benchmark locally and inspect repeated-run CSVs and plots.
+- Run the classifier comparison, feature-ablation, and unseen-size generalization experiment.
+- Execute regression tests and review any failures before claiming verified status.
+- Review the dashboard and regenerate the final report using actual outputs.
+- Prepare final submission formatting, references, and viva material.
