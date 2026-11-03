@@ -127,8 +127,9 @@ def build_final_report(
         "## Abstract",
         "",
         (
-            "This study compares recursive backtracking, iterative backtracking, and a "
-            "Random Forest-guided iterative backtracking strategy for the N-Queens problem. "
+            "This study compares recursive backtracking, iterative backtracking, the Minimum "
+            "Remaining Values (MRV) heuristic, and a Random Forest-guided iterative "
+            "backtracking strategy for the N-Queens problem. "
             "The ML model orders legal candidates; it does not remove candidates, so the "
             "search retains backtracking completeness. Runtime conclusions below are "
             "generated from the supplied repeated-run benchmark summary. They should be "
@@ -144,6 +145,7 @@ def build_final_report(
         f"- Warm-up runs: {metadata.get('warmups', 'Not recorded')}",
         f"- Memory profiling repetitions: {metadata.get('memory_repeats', 'Not recorded')}",
         "- Model loading is excluded from measured solver runtime.",
+        "- MRV dynamically assigns rows out of order and recomputes domains for remaining rows; its candidate_checks count is not directly equivalent to the fixed-row solvers candidate checks."
         (
             "- ML total runtime includes feature preparation, model inference, candidate "
             "ranking, and backtracking. The separately reported inference time is a "
@@ -218,6 +220,14 @@ def build_final_report(
                 f"{_fmt(row.get('median_candidate_checks'), 1)} | "
                 f"{_fmt(row.get('peak_traced_memory_kb'))} |"
             )
+
+    if any("mrv" not in rows for rows in grouped.values()):
+        lines.extend([
+            "",
+            "**MRV coverage note:** one or more board sizes have no MRV benchmark row. "
+            "Regenerate the benchmark with the current four-algorithm runner before "
+            "making a four-way performance claim.",
+        ])
 
     lines.extend(["", "## 4. Per-size interpretation", ""])
     lines.extend(_comparison_sentence(n, grouped[n]) for n in sorted(grouped))
