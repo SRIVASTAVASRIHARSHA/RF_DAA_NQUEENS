@@ -11,6 +11,7 @@ def sample_summary():
         for algorithm, factor in (
             ("recursive", 1.0),
             ("iterative", 0.95),
+            ("mrv", 1.1),
             ("ml", 0.6),
         ):
             rows.append({
@@ -40,12 +41,13 @@ class TestReporting(unittest.TestCase):
             },
         )
         self.assertIn("N=4", report)
+        self.assertIn("| 4 | MRV |", report)
         self.assertIn("1.58×", report)
         self.assertIn("0.200", report)
         self.assertIn("test platform", report)
         self.assertIn("feature-processing work", report)
 
-    def test_report_does_not_claim_three_way_comparison_when_solver_missing(self):
+    def test_report_does_not_claim_complete_comparison_when_solver_missing(self):
         incomplete = sample_summary()
         incomplete = incomplete[incomplete["algorithm"] != "ml"]
         report = build_final_report(incomplete)
