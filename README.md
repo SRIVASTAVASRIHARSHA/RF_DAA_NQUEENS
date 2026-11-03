@@ -158,7 +158,7 @@ Launch the local Streamlit research dashboard from the project root:
 streamlit run app.py
 ```
 
-The benchmark dashboard includes a shared-chart Y-axis toggle for **Linear** and **Logarithmic** scales. Logarithmic mode is enabled only when every value in the selected metric is strictly positive; metrics containing zero, negative, or missing values stay on a linear axis.
+The benchmark dashboard includes a shared-chart Y-axis toggle for **Linear** and **Logarithmic** scales. Logarithmic mode is selected by default for runtime and memory metrics when every value is strictly positive, making small conventional-solver timings more visible beside the ML-guided timings. Linear remains available. Metrics containing zero, negative, or missing values stay on a linear axis. The chart layers the Recursive dashed line above the Iterative solid line and uses hollow square/circle markers so closely overlapping measurements remain distinguishable without altering the plotted values.
 
 The dashboard contains three views:
 
