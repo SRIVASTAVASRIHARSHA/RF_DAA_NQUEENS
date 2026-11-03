@@ -8,57 +8,42 @@ A comparative DAA project investigating the N-Queens problem through conventiona
 - **Phase 2 complete:** reusable constraint checker, recursive solver, iterative solver, CLI runner, and automated tests.
 - **Phase 3 complete:** exhaustive candidate dataset generation, fixed-width feature extraction, reproducible train/validation split grouped by partial-board state.
 - **Phase 4 complete:** Random Forest training pipeline, validation metrics, candidate-ranking evaluation, feature importance, and confusion-matrix reporting.
+- **Phase 5 complete:** ML-guided iterative solver with probability-ranked candidate ordering and complete backtracking.
 
-The ML-guided iterative solver, end-to-end benchmarking, and optional Streamlit visualization remain future phases.
+End-to-end benchmarking and optional Streamlit visualization remain future phases.
 
-## Implemented algorithms
+## Algorithms
 
-1. **Recursive backtracking** — uses the call stack to advance through rows and backtrack when no legal column remains.
-2. **Iterative backtracking** — uses an explicit next_column array to track the next candidate for each row, without recursion.
+1. **Recursive backtracking** — uses the call stack.
+2. **Iterative backtracking** — uses an explicit next_column array.
+3. **ML-guided iterative backtracking** — uses the trained Random Forest to rank every legal candidate, then explores candidates iteratively with backtracking.
 
-Both solvers use the same row-to-column board representation, constraint checker, ascending-column candidate order, statistics, and event format.
+## ML-guided search
 
-## Dataset methodology
+The ML solver starts from a completely empty board. At every reached partial-board state it:
 
-The dataset generator creates one sample for each legal next-row candidate from every reachable legal partial-board state for N=4 through N=10.
+1. Generates all legal columns for the next row.
+2. Extracts the same 18 features used during training.
+3. Gets the model's positive-class score for every legal candidate.
+4. Sorts candidates by descending score (ties use ascending column number).
+5. Tries candidates in that order.
+6. If a branch fails, backtracks and tries the next untried candidate.
 
-The binary target can_complete is defined as:
+**Completeness safeguard:** model scores only determine candidate order. No legal candidate is permanently filtered out. Thus, assuming the underlying constraint checker and model interface work correctly, ML ranking does not remove any branch that ordinary backtracking would explore.
 
-- 1: exhaustive backtracking finds at least one complete N-Queens solution after placing this candidate.
-- 0: exhaustive backtracking proves that no completion exists.
+The solver records rank_candidates events with each candidate's score and rank, enabling later step-by-step visualization.
 
-The generator memoizes completion checks and still visits dead-end partial states so unsuccessful candidates are represented. This is a candidate-ranking dataset; it does not ask the classifier to predict the entire board in one step.
+The scores are ranking signals, not necessarily calibrated probabilities or guarantees of success.
 
-Features include board size, current row, candidate column, normalized position features, distance from the board centre, and twelve fixed-width queen-column features. Unfilled rows are encoded as -1.
+## Dataset
 
-### Generated dataset (N=4–10)
+Candidate labels are established by exhaustive completion search with memoization. The N=4–10 dataset contains 46,759 legal candidate samples: 8,203 positive and 38,556 negative. Train/validation splitting is grouped by partial-board state to avoid placing candidates from one state in both partitions.
 
-| Metric | Result |
-|---|---:|
-| Candidate samples | 46,759 |
-| Positive labels | 8,203 |
-| Negative labels | 38,556 |
-| Positive rate | 17.54% |
-| Candidate-parent partial states | 30,056 |
-| All visited partial states, including dead ends | 45,542 |
+The fixed feature schema contains 18 numerical columns and supports board sizes up to N=12.
 
-The reproducible 80/20 train/validation split uses GroupShuffleSplit grouped by state_id. All candidates from one partial-board state remain in the same partition; the generated split has zero overlapping states.
+## Random Forest validation summary
 
-## Random Forest model
-
-The training script fits a scikit-learn RandomForestClassifier using the 18 feature columns. Its default configuration is:
-
-- 150 trees
-- Maximum tree depth: 18
-- Minimum samples per leaf: 3
-- Balanced subsampling of classes
-- Fixed random seed: 42
-
-The model's positive-class scores are used to rank candidate placements. They are not treated as hard decisions: the future ML-guided solver must retain every legal candidate and backtrack through alternatives to preserve completeness.
-
-### Validation results
-
-The recorded validation run used 37,426 training samples and 9,333 held-out candidate samples. The validation split contains 6,012 partial-board states and has no state overlap with training.
+The recorded validation run used 37,426 training samples and 9,333 validation samples.
 
 | Metric | Result |
 |---|---:|
@@ -68,102 +53,66 @@ The recorded validation run used 37,426 training samples and 9,333 held-out cand
 | Positive-class recall | 44.00% |
 | Positive-class F1 | 47.71% |
 | ROC-AUC | 0.7813 |
-| PR-AUC (average precision) | 0.5567 |
+| PR-AUC | 0.5567 |
+| ML top-1 hit rate on solvable states | 80.70% |
+| Ascending-column baseline | 77.07% |
 
-Because only 17.54% of the generated candidate rows are positive, accuracy alone is not a sufficient measure of model quality.
-
-### Candidate-ranking evaluation
-
-Among validation states that have at least one completing candidate, the model ranked a completing candidate first in 80.70% of states. The ascending-column baseline achieved 77.07% on the same states.
-
-This is a preliminary ranking improvement, not evidence that the complete solver is faster. Phase 5 and Phase 6 must measure the actual search, backtracks, and inference overhead.
-
-### Model artifacts
-
-Training writes the following files locally:
-
-- models/random_forest.joblib — trained model.
-- models/model_metadata.json — feature schema, package version, and training configuration.
-- results/model_metrics.json — validation and ranking metrics.
-- results/classification_report.txt — class-level precision, recall, and F1.
-- results/feature_importance.csv — feature importance values.
-- results/confusion_matrix.png — validation confusion matrix.
-- results/feature_importance.png — feature importance chart.
-
-The serialized Joblib model is excluded from Git because it is a relatively large, Python/scikit-learn-version-sensitive binary. Recreate it locally using the training command below.
-
-## Project structure
-
-```text
-RF_DAA_NQUEENS/
-├── data/
-│   ├── dataset_summary.json
-│   └── sample_training_data_n4.csv
-├── models/
-├── results/
-├── src/
-│   ├── __init__.py
-│   ├── constraint_checker.py
-│   ├── recursive_solver.py
-│   ├── iterative_solver.py
-│   ├── feature_extraction.py
-│   ├── dataset_generator.py
-│   └── train_model.py
-├── tests/
-├── main.py
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
+The ranking result is a preliminary improvement only. It does not establish an end-to-end speedup; Phase 6 measures runtime and search effort including inference overhead.
 
 ## Setup
 
 Python 3.13 is recommended.
 
-```bash
+\`\`\`bash
 python3.13 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-```
+\`\`\`
 
-## Run the solvers
+## Run the conventional solvers
 
-```bash
+\`\`\`bash
 python main.py --size 8 --algorithm both
-```
+\`\`\`
 
 ## Generate the dataset
 
-From the repository root:
-
-```bash
+\`\`\`bash
 python -m src.dataset_generator
-```
+\`\`\`
 
-This creates the full CSV, grouped training/validation CSVs, and a JSON summary under data/. Full generated CSVs are excluded from Git because they can be reproduced.
+This creates data/training_data.csv, data/train.csv, data/validation.csv, and data/dataset_summary.json. The generated full CSVs are excluded from Git because they can be reproduced.
 
-## Train and evaluate the Random Forest
+## Train the Random Forest
 
-After generating the dataset:
-
-```bash
+\`\`\`bash
 python -m src.train_model
-```
+\`\`\`
 
-Optional training parameters:
+This creates models/random_forest.joblib locally.
 
-```bash
-python -m src.train_model --trees 150 --max-depth 18 --min-samples-leaf 3
-```
+## Run the ML-guided solver
 
-## Run tests
+\`\`\`bash
+python main.py --size 8 --algorithm ml
+\`\`\`
 
-```bash
+Run all three solvers sequentially:
+
+\`\`\`bash
+python main.py --size 8 --algorithm all
+\`\`\`
+
+The ML solver requires the locally trained models/random_forest.joblib file. The Joblib file is excluded from Git; load only trusted model files.
+
+## Tests
+
+\`\`\`bash
 python -m unittest discover -s tests -v
-```
+\`\`\`
 
-## Planned next phases
+## Next phases
 
-- Integrate probability-ranked candidates into the iterative solver while preserving completeness by trying every legal candidate when required.
-- Benchmark runtime, explored states, backtracks, candidate checks, and ML inference overhead.
-- Optionally add a Streamlit chessboard visualization.
+- Benchmark all three solvers using the same board sizes and report wall-clock time, explored states, backtracks, candidate checks, memory, and ML inference overhead.
+- Add an optional Streamlit chessboard visualization using the shared event format.
+- Prepare the final report and viva material.
