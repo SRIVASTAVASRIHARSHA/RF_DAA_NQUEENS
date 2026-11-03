@@ -5,12 +5,15 @@ import argparse
 from src.constraint_checker import is_valid_solution
 from src.iterative_solver import solve_n_queens_iterative
 from src.ml_guided_solver import solve_n_queens_ml
+from src.mrv_solver import solve_n_queens_mrv
+from src.all_solutions import enumerate_n_queens
 from src.recursive_solver import solve_n_queens
 
 
 SOLVERS = {
     "recursive": solve_n_queens,
     "iterative": solve_n_queens_iterative,
+    "mrv": solve_n_queens_mrv,
     "ml": solve_n_queens_ml,
 }
 
@@ -56,16 +59,44 @@ def main():
     )
     parser.add_argument(
         "--algorithm",
-        choices=("recursive", "iterative", "ml", "both", "all"),
+        choices=("recursive", "iterative", "mrv", "ml", "both", "all"),
         default="both",
         help="solver to run (default: both conventional solvers)",
+    )
+    parser.add_argument(
+        "--all-solutions",
+        action="store_true",
+        help="enumerate all solutions instead of finding only the first",
+    )
+    parser.add_argument(
+        "--max-solutions",
+        type=int,
+        default=None,
+        help="optional cap for all-solutions enumeration",
     )
     args = parser.parse_args()
 
     if args.size < 1:
         parser.error("board size must be at least 1")
 
-    if args.algorithm == "both":
+    if args.all_solutions:
+        solutions, stats, _ = enumerate_n_queens(
+            args.size,
+            max_solutions=args.max_solutions,
+            collect_events=False,
+        )
+        print(f"\nAll-solutions enumeration (N={args.size})")
+        print(f"Solutions found: {stats['solutions_found']}")
+        print(f"Explored states: {stats['explored_states']}")
+        print(f"Candidate checks: {stats['candidate_checks']}")
+        print(f"Backtracks: {stats['backtracks']}")
+        print(f"Stopped at solution cap: {stats['truncated']}")
+        for index, solution in enumerate(solutions[:3], start=1):
+            print(f"\nSolution {index}")
+            print_board(solution)
+        if len(solutions) > 3:
+            print(f"... and {len(solutions) - 3} more solutions.")
+    elif args.algorithm == "both":
         recursive = run_solver("recursive", solve_n_queens, args.size)
         iterative = run_solver("iterative", solve_n_queens_iterative, args.size)
         print("\nConventional traversal consistency:",
@@ -73,6 +104,7 @@ def main():
     elif args.algorithm == "all":
         run_solver("recursive", solve_n_queens, args.size)
         run_solver("iterative", solve_n_queens_iterative, args.size)
+        run_solver("mrv", solve_n_queens_mrv, args.size)
         run_solver("ml", solve_n_queens_ml, args.size)
     else:
         run_solver(args.algorithm, SOLVERS[args.algorithm], args.size)
