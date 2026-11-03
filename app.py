@@ -174,6 +174,13 @@ if page == "Benchmark dashboard":
                     "This benchmark summary predates the MRV baseline. Regenerate it "
                     "with 'python -m src.benchmark' to include all four algorithms."
                 )
+            else:
+                st.caption(
+                    "MRV assigns rows out of order and recomputes legal domains across "
+                    "remaining rows. Its candidate-check count is therefore not directly "
+                    "equivalent to fixed-row candidate checks; use total runtime as the "
+                    "direct cost comparison."
+                )
 
             sizes = sorted(summary["board_size"].dropna().astype(int).unique())
             chosen_size = st.selectbox("Board size", sizes, index=0)
