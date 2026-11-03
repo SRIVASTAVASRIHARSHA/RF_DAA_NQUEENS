@@ -30,15 +30,23 @@ from src.constraint_checker import is_valid_solution
 from src.feature_extraction import MAX_BOARD_SIZE
 from src.iterative_solver import solve_n_queens_iterative
 from src.ml_guided_solver import DEFAULT_MODEL_PATH, load_trained_model, solve_n_queens_ml
+from src.mrv_solver import solve_n_queens_mrv
 from src.recursive_solver import solve_n_queens
 
 DEFAULT_SIZES = (4, 6, 8, 10, 12)
-ALGORITHMS = ("recursive", "iterative", "ml")
+ALGORITHMS = ("recursive", "iterative", "mrv", "ml")
 ALGORITHM_COLORS = {
     "recursive": "#64748B",  # Slate gray
     "iterative": "#2563EB",  # Blue
+    "mrv": "#8B5CF6",  # Violet
     "ml": "#F97316",  # Orange
 }
+
+
+def _algorithm_label(algorithm: str) -> str:
+    return {"ml": "ML-guided", "mrv": "MRV"}.get(
+        algorithm, algorithm.capitalize()
+    )
 
 
 def _validate_configuration(
@@ -75,6 +83,7 @@ def _build_solvers(model: Any) -> dict[str, Callable]:
     return {
         "recursive": solve_n_queens,
         "iterative": solve_n_queens_iterative,
+        "mrv": solve_n_queens_mrv,
         "ml": lambda n: solve_n_queens_ml(n, model=model),
     }
 
@@ -259,7 +268,7 @@ def _save_line_plot(
                 marker="o",
                 capsize=4,
                 color=ALGORITHM_COLORS[algorithm],
-                label="ML-guided" if algorithm == "ml" else algorithm.capitalize(),
+                label=_algorithm_label(algorithm),
             )
         else:
             axis.plot(
@@ -267,7 +276,7 @@ def _save_line_plot(
                 y_values,
                 marker="o",
                 color=ALGORITHM_COLORS[algorithm],
-                label="ML-guided" if algorithm == "ml" else algorithm.capitalize(),
+                label=_algorithm_label(algorithm),
             )
 
     axis.set_xlabel("Board size (N)")
