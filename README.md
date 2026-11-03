@@ -9,8 +9,9 @@ A comparative DAA project investigating the N-Queens problem through conventiona
 - **Phase 3 complete:** exhaustive candidate dataset generation, fixed-width feature extraction, reproducible train/validation split grouped by partial-board state.
 - **Phase 4 complete:** Random Forest training pipeline, validation metrics, candidate-ranking evaluation, feature importance, and confusion-matrix reporting.
 - **Phase 5 complete:** ML-guided iterative solver with probability-ranked candidate ordering and complete backtracking.
+- **Phase 6 implementation complete:** repeatable benchmark runner for all three solvers, per-run and summary CSVs, runtime/search/memory plots, and benchmark tests. The actual experiment results must be generated on the target Mac because timings are hardware- and environment-dependent.
 
-End-to-end benchmarking and optional Streamlit visualization remain future phases.
+Optional Streamlit visualization and final report preparation remain.
 
 ## Algorithms
 
@@ -57,7 +58,7 @@ The recorded validation run used 37,426 training samples and 9,333 validation sa
 | ML top-1 hit rate on solvable states | 80.70% |
 | Ascending-column baseline | 77.07% |
 
-The ranking result is a preliminary improvement only. It does not establish an end-to-end speedup; Phase 6 measures runtime and search effort including inference overhead.
+The ranking result is a preliminary improvement only. It does not establish an end-to-end speedup; the Phase 6 benchmark measures full solver runtime and search effort, including the ML feature preparation and prediction work.
 
 ## Setup
 
@@ -105,6 +106,46 @@ python main.py --size 8 --algorithm all
 
 The ML solver requires the locally trained models/random_forest.joblib file. The Joblib file is excluded from Git; load only trusted model files.
 
+## Phase 6 — Benchmark all three solvers
+
+The benchmark runner measures recursive, iterative, and ML-guided search on the same board sizes. It loads the trained model **before** timing begins, performs warm-up runs, rotates solver execution order between repeats using a fixed seed, and reports both median and mean values. The default configuration uses N=4, 6, 8, 10, and 12; 30 timed repetitions; 3 warm-ups; and 3 separate memory-profiling runs.
+
+Run a quick smoke benchmark first:
+
+\`\`\`bash
+python -m src.benchmark --sizes 4 6 8 --repeats 5 --warmups 1 --memory-repeats 1
+\`\`\`
+
+Run the full default benchmark:
+
+\`\`\`bash
+python -m src.benchmark
+\`\`\`
+
+Optional arguments:
+
+- \`--sizes 4 6 8 10 12\`: board sizes (maximum N=12 for the current feature schema).
+- \`--repeats 30\`: timed runs per algorithm and board size.
+- \`--warmups 3\`: untimed warm-up runs per algorithm and size.
+- \`--memory-repeats 3\`: separate memory-profiling runs.
+- \`--seed 42\`: deterministic rotation of solver order.
+- \`--model-path models/random_forest.joblib\`: trusted local trained model.
+- \`--output-dir results/benchmark\`: output directory.
+
+The runner writes:
+
+- \`benchmark_runs.csv\`: one row per timed run.
+- \`benchmark_summary.csv\`: mean, median, standard deviation, interquartile range, search metrics, and memory summary.
+- \`benchmark_metadata.json\`: Python/platform details and run configuration.
+- \`benchmark_runtime.png\`, \`benchmark_explored_states.png\`, and \`benchmark_candidate_checks.png\`.
+- \`benchmark_inference_overhead.png\` and \`benchmark_memory.png\`.
+
+**Timing interpretation:** total execution time wraps the complete solver call. For ML this includes candidate feature extraction, DataFrame construction, \`predict_proba\`, ranking, and backtracking. Model loading is excluded. The separate inference column is the time spent inside the model's \`predict_proba\` call only; it is a subset of ML total time and must not be added again. Recursive and iterative solvers have zero model inference time.
+
+Memory is measured in separate runs using Python's \`tracemalloc\`, reported as peak Python-tracked allocation. It is not whole-process resident memory and may not include all native-library allocations. Memory profiling is kept outside timed runs to avoid distorting wall-clock measurements.
+
+Do not publish timing values from a single run as a performance conclusion. Use the repeated-run summary, report the hardware/software environment from the metadata file, and discuss both search effort and total time. A reduction in explored states does not automatically imply a faster wall-clock result.
+
 ## Tests
 
 \`\`\`bash
@@ -113,6 +154,6 @@ python -m unittest discover -s tests -v
 
 ## Next phases
 
-- Benchmark all three solvers using the same board sizes and report wall-clock time, explored states, backtracks, candidate checks, memory, and ML inference overhead.
+- Execute the Phase 6 benchmark locally, inspect repeated-run CSVs and plots, and interpret measured performance.
 - Add an optional Streamlit chessboard visualization using the shared event format.
 - Prepare the final report and viva material.
