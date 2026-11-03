@@ -10,8 +10,9 @@ A comparative DAA project investigating the N-Queens problem through conventiona
 - **Phase 4 complete:** Random Forest training pipeline, validation metrics, candidate-ranking evaluation, feature importance, and confusion-matrix reporting.
 - **Phase 5 complete:** ML-guided iterative solver with probability-ranked candidate ordering and complete backtracking.
 - **Phase 6 implementation complete:** repeatable benchmark runner for all three solvers, per-run and summary CSVs, runtime/search/memory plots, and benchmark tests. The actual experiment results must be generated on the target Mac because timings are hardware- and environment-dependent.
+- **Phase 7 implementation complete:** Streamlit benchmark dashboard, solver-event replay with ML candidate rankings, model/dataset diagnostics, and a Markdown report generator driven by real experiment outputs.
 
-Optional Streamlit visualization and final report preparation remain.
+The dashboard and report still need to be exercised locally against the actual benchmark files before final submission.
 
 ## Algorithms
 
@@ -146,6 +147,30 @@ Memory is measured in separate runs using Python's `tracemalloc`, reported as pe
 
 Do not publish timing values from a single run as a performance conclusion. Use the repeated-run summary, report the hardware/software environment from the metadata file, and discuss both search effort and total time. A reduction in explored states does not automatically imply a faster wall-clock result.
 
+## Phase 7 — Visualization and final report
+
+Launch the local Streamlit research dashboard from the project root:
+
+\`\`\`bash
+streamlit run app.py
+\`\`\`
+
+The dashboard contains three views:
+
+1. **Benchmark dashboard** — compares median/mean runtime, explored states, backtracks, candidate checks, memory, and ML inference overhead. It reads \`results/benchmark/benchmark_summary.csv\` and \`benchmark_runs.csv\`. A summary CSV can also be uploaded for inspection.
+2. **Solver visualizer** — runs recursive, iterative, or ML-guided search and replays recorded place/backtrack events on a chessboard. For ML-guided search, it also displays the candidate scores and ranks recorded at each reached state.
+3. **Model & dataset** — displays the recorded Random Forest validation metrics and dataset composition.
+
+Generate the final Markdown evaluation after completing the benchmark:
+
+\`\`\`bash
+python -m src.reporting
+\`\`\`
+
+The generated file is \`results/final_report.md\`. It is built from the actual benchmark summary, environment metadata, model metrics, and dataset summary. It compares the median runtime and search effort per board size. It does not fabricate timing data or assume the ML solver is faster.
+
+The report is Markdown so it can be reviewed and edited before converting it into the final submission format. Include the actual benchmark CSVs and metadata with the project archive so the conclusions are reproducible.
+
 ## Tests
 
 ```bash
@@ -155,5 +180,6 @@ python -m unittest discover -s tests -v
 ## Next phases
 
 - Execute the Phase 6 benchmark locally, inspect repeated-run CSVs and plots, and interpret measured performance.
-- Add an optional Streamlit chessboard visualization using the shared event format.
-- Prepare the final report and viva material.
+- Run the Streamlit dashboard locally and review its benchmark, replay, and model/dataset views.
+- Generate and review the final report after the actual benchmark experiment has completed.
+- Prepare final submission formatting and viva material.
