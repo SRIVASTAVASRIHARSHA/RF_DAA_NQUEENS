@@ -41,8 +41,8 @@ from src.feature_extraction import FEATURE_COLUMNS, MAX_BOARD_SIZE
 from src.train_model import calculate_ranking_metrics
 
 DEFAULT_OUTPUT_DIR = Path("results/research")
-DEFAULT_TRAIN_SIZES = (4, 5, 6, 7, 8, 9, 10)
-DEFAULT_UNSEEN_SIZES = (11, 12)
+DEFAULT_TRAIN_SIZES = (4, 5, 6, 7, 8)
+DEFAULT_UNSEEN_SIZES = (9, 10)
 
 ABLATIONS = {
     "full_18_features": tuple(FEATURE_COLUMNS),
@@ -309,6 +309,26 @@ def _save_comparison_plot(
     plt.close(fig)
 
 
+def _save_bar_plot(
+    frame: pd.DataFrame,
+    category: str,
+    value: str,
+    title: str,
+    output: Path,
+) -> None:
+    fig, axis = plt.subplots(figsize=(8, 5))
+    ordered = frame.sort_values(value, ascending=False)
+    axis.bar(ordered[category].astype(str), ordered[value])
+    axis.set_title(title)
+    axis.set_xlabel(category.replace("_", " ").title())
+    axis.set_ylabel(value.replace("_", " ").title())
+    axis.tick_params(axis="x", rotation=15)
+    axis.grid(True, axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(output, dpi=180)
+    plt.close(fig)
+
+
 def run_all_experiments(
     train_sizes: tuple[int, ...] = DEFAULT_TRAIN_SIZES,
     unseen_sizes: tuple[int, ...] = DEFAULT_UNSEEN_SIZES,
@@ -344,19 +364,17 @@ def run_all_experiments(
     for name, frame in outputs.items():
         frame.to_csv(destination / f"{name}.csv", index=False)
 
-    _save_comparison_plot(
+    _save_bar_plot(
         comparison,
         "model",
         "balanced_accuracy",
-        "model",
         "Classifier comparison — balanced accuracy",
         destination / "model_comparison_balanced_accuracy.png",
     )
-    _save_comparison_plot(
+    _save_bar_plot(
         ablation,
         "model",
         "balanced_accuracy",
-        "model",
         "Feature ablation — balanced accuracy",
         destination / "feature_ablation_balanced_accuracy.png",
     )
