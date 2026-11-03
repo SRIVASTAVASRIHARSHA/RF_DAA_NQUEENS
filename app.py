@@ -191,7 +191,7 @@ if page == "Benchmark dashboard":
             st.subheader(selected_label)
             comparison_chart = (
                 alt.Chart(summary)
-                .mark_line(point=alt.OverlayMarkDef(filled=True, size=75), strokeWidth=3)
+                .mark_line(point=alt.OverlayMarkDef(filled=True, size=110), strokeWidth=3)
                 .encode(
                     x=alt.X("board_size:Q", title="Board size (N)", axis=alt.Axis(tickMinStep=1)),
                     y=alt.Y(f"{selected_metric}:Q", title=selected_label),
@@ -201,6 +201,22 @@ if page == "Benchmark dashboard":
                         scale=ALGORITHM_COLOR_SCALE,
                         sort=["Recursive", "Iterative", "ML-guided"],
                     ),
+                    strokeDash=alt.StrokeDash(
+                        "algorithm:N",
+                        title="Line style",
+                        scale=alt.Scale(
+                            domain=["Recursive", "Iterative", "ML-guided"],
+                            range=[[7, 4], [1, 0], [3, 2]],
+                        ),
+                    ),
+                    shape=alt.Shape(
+                        "algorithm:N",
+                        title="Marker",
+                        scale=alt.Scale(
+                            domain=["Recursive", "Iterative", "ML-guided"],
+                            range=["square", "circle", "triangle"],
+                        ),
+                    ),
                     tooltip=[
                         alt.Tooltip("board_size:Q", title="N"),
                         alt.Tooltip("algorithm:N", title="Algorithm"),
@@ -209,7 +225,21 @@ if page == "Benchmark dashboard":
                 )
                 .properties(height=380)
             )
-            st.altair_chart(comparison_chart, use_container_width=True)
+            st.altair_chart(comparison_chart, width="stretch")
+
+            recursive_values = size_frame.loc[
+                size_frame["algorithm"] == "Recursive", selected_metric
+            ]
+            iterative_values = size_frame.loc[
+                size_frame["algorithm"] == "Iterative", selected_metric
+            ]
+            if not recursive_values.empty and not iterative_values.empty:
+                if float(recursive_values.iloc[0]) == float(iterative_values.iloc[0]):
+                    st.caption(
+                        "Recursive and Iterative have the same value for this metric, "
+                        "so their lines overlap. Dashed-square = Recursive; "
+                        "solid-circle = Iterative; dash-dot-triangle = ML-guided."
+                    )
 
             st.subheader(f"Results for N={chosen_size}")
             metric_columns = st.columns(3)
@@ -233,7 +263,7 @@ if page == "Benchmark dashboard":
             st.subheader("Benchmark summary table")
             st.dataframe(
                 summary.sort_values(["board_size", "algorithm"]),
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
 
@@ -249,7 +279,7 @@ if page == "Benchmark dashboard":
                         )
                         st.dataframe(
                             runs[runs["algorithm"].isin(selected_algorithms)],
-                            use_container_width=True,
+                            width="stretch",
                             hide_index=True,
                         )
                     except (OSError, pd.errors.ParserError, KeyError) as exc:
@@ -354,7 +384,7 @@ elif page == "Solver visualizer":
                 if not ranking_frame.empty:
                     st.dataframe(
                         ranking_frame,
-                        use_container_width=True,
+                        width="stretch",
                         hide_index=True,
                     )
                 else:
@@ -420,11 +450,11 @@ else:
             distribution.index = distribution.index.astype(int)
             st.bar_chart(
                 distribution[["positive_samples", "negative_samples"]].sort_index(),
-                use_container_width=True,
+                width="stretch",
             )
             st.dataframe(
                 distribution.sort_index(),
-                use_container_width=True,
+                width="stretch",
             )
     else:
         st.info("Dataset summary is not available in data/dataset_summary.json.")
