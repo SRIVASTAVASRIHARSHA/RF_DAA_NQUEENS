@@ -199,14 +199,26 @@ if page == "Benchmark dashboard":
                 if log_scale_allowed
                 else ["Linear"]
             )
+            default_log_metrics = {
+                "median_execution_time_ms",
+                "mean_execution_time_ms",
+                "peak_traced_memory_kb",
+                "median_inference_time_ms",
+            }
+            default_scale_index = (
+                1
+                if log_scale_allowed and selected_metric in default_log_metrics
+                else 0
+            )
             selected_scale = st.radio(
                 "Y-axis scale",
                 options=scale_options,
+                index=default_scale_index,
                 horizontal=True,
-                key="benchmark_y_axis_scale",
+                key="benchmark_y_axis_scale_v2",
                 help=(
-                    "Logarithmic scale makes small and large values easier to compare "
-                    "on the same chart. It changes the axis spacing, not the data."
+                    "Logarithmic scale makes small and large positive values easier "
+                    "to compare on one chart. It changes axis spacing, not the data."
                 ),
             )
             if not log_scale_allowed:
@@ -222,62 +234,103 @@ if page == "Benchmark dashboard":
             )
 
             st.subheader(selected_label)
-            # One shared set of axes makes every algorithm comparable at the
-            # same N and on the same metric scale.
-            comparison_chart = (
-                alt.Chart(summary)
-                .mark_line(
-                    point=alt.OverlayMarkDef(filled=True, size=120),
-                    strokeWidth=3,
-                )
-                .encode(
-                    x=alt.X(
-                        "board_size:Q",
-                        title="Board size (N)",
-                        axis=alt.Axis(tickMinStep=1),
-                    ),
-                    y=alt.Y(
+            # Draw Iterative first, then ML, then Recursive. The dashed Recursive
+            # stroke sits above the Iterative stroke when their values coincide,
+            # while the hollow circle/square markers let both remain identifiable.
+            base_chart = alt.Chart(summary).encode(
+                x=alt.X(
+                    "board_size:Q",
+                    title="Board size (N)",
+                    axis=alt.Axis(tickMinStep=1),
+                ),
+                y=alt.Y(
+                    f"{selected_metric}:Q",
+                    title=selected_label,
+                    scale=y_axis_scale,
+                ),
+                tooltip=[
+                    alt.Tooltip("board_size:Q", title="N"),
+                    alt.Tooltip("algorithm:N", title="Algorithm"),
+                    alt.Tooltip(
                         f"{selected_metric}:Q",
                         title=selected_label,
-                        scale=y_axis_scale,
+                        format=".6f",
                     ),
-                    color=alt.Color(
-                        "algorithm:N",
-                        title="Algorithm",
-                        scale=ALGORITHM_COLOR_SCALE,
-                        sort=["Recursive", "Iterative", "ML-guided"],
-                    ),
-                    strokeDash=alt.StrokeDash(
-                        "algorithm:N",
-                        title="Line style",
-                        scale=alt.Scale(
-                            domain=["Recursive", "Iterative", "ML-guided"],
-                            range=[[7, 4], [1, 0], [3, 2]],
-                        ),
-                    ),
-                    shape=alt.Shape(
-                        "algorithm:N",
-                        title="Marker",
-                        scale=alt.Scale(
-                            domain=["Recursive", "Iterative", "ML-guided"],
-                            range=["square", "circle", "triangle"],
-                        ),
-                    ),
-                    detail=alt.Detail("algorithm:N"),
-                    order=alt.Order("algorithm:N"),
-                    tooltip=[
-                        alt.Tooltip("board_size:Q", title="N"),
-                        alt.Tooltip("algorithm:N", title="Algorithm"),
-                        alt.Tooltip(
-                            f"{selected_metric}:Q",
-                            title=selected_label,
-                            format=".4f",
-                        ),
-                    ],
-                )
-                .properties(height=420)
+                ],
             )
+
+            iterative_data = base_chart.transform_filter(
+                alt.datum.algorithm == "Iterative"
+            )
+            recursive_data = base_chart.transform_filter(
+                alt.datum.algorithm == "Recursive"
+            )
+            ml_data = base_chart.transform_filter(
+                alt.datum.algorithm == "ML-guided"
+            )
+
+            iterative_line = iterative_data.mark_line(
+                color="#2563EB",
+                strokeWidth=3,
+            )
+            ml_line = ml_data.mark_line(
+                color="#F97316",
+                strokeWidth=3,
+                strokeDash=[3, 2],
+            )
+            recursive_line = recursive_data.mark_line(
+                color="#64748B",
+                strokeWidth=3.5,
+                strokeDash=[7, 4],
+            )
+
+            iterative_points = iterative_data.mark_point(
+                shape="circle",
+                filled=False,
+                size=210,
+                strokeWidth=3,
+                color="#2563EB",
+            )
+            ml_points = ml_data.mark_point(
+                shape="triangle",
+                filled=False,
+                size=190,
+                strokeWidth=3,
+                color="#F97316",
+            )
+            recursive_points = recursive_data.mark_point(
+                shape="square",
+                filled=False,
+                size=125,
+                strokeWidth=3,
+                color="#64748B",
+            )
+
+            comparison_chart = alt.layer(
+                iterative_line,
+                ml_line,
+                recursive_line,
+                iterative_points,
+                ml_points,
+                recursive_points,
+            ).properties(height=420)
             st.altair_chart(comparison_chart, width="stretch")
+
+            # A compact legend is explicit because separately layered marks do
+            # not generate a shared automatic legend.
+            legend_columns = st.columns(3)
+            legend_columns[0].markdown(
+                '<span style="color:#64748B;font-size:1.15rem">■</span> **Recursive** · dashed',
+                unsafe_allow_html=True,
+            )
+            legend_columns[1].markdown(
+                '<span style="color:#2563EB;font-size:1.15rem">●</span> **Iterative** · solid',
+                unsafe_allow_html=True,
+            )
+            legend_columns[2].markdown(
+                '<span style="color:#F97316;font-size:1.15rem">▲</span> **ML-guided** · dotted',
+                unsafe_allow_html=True,
+            )
 
             recursive_values = size_frame.loc[
                 size_frame["algorithm"] == "Recursive", selected_metric
@@ -291,11 +344,10 @@ if page == "Benchmark dashboard":
                 and float(recursive_values.iloc[0]) == float(iterative_values.iloc[0])
             ):
                 st.caption(
-                    "Recursive and Iterative overlap where their measured values are "
-                    "identical. Both series are included; hover over the shared points "
-                    "to inspect the algorithm values."
+                    "Recursive and Iterative have identical values for this board size. "
+                    "Their strokes overlap by definition; the dashed line and hollow "
+                    "square/circle markers distinguish the two without changing data."
                 )
-
 
             st.subheader(f"Results for N={chosen_size}")
             metric_columns = st.columns(3)
