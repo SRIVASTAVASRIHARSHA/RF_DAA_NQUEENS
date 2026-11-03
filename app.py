@@ -169,6 +169,12 @@ if page == "Benchmark dashboard":
                 })
                 .fillna(summary["algorithm"].astype(str))
             )
+            if "MRV" not in set(summary["algorithm"]):
+                st.warning(
+                    "This benchmark summary predates the MRV baseline. Regenerate it "
+                    "with 'python -m src.benchmark' to include all four algorithms."
+                )
+
             sizes = sorted(summary["board_size"].dropna().astype(int).unique())
             chosen_size = st.selectbox("Board size", sizes, index=0)
             size_frame = summary[summary["board_size"] == chosen_size].copy()
