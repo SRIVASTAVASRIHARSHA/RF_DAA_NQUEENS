@@ -189,11 +189,15 @@ if page == "Benchmark dashboard":
             selected_metric = available_metrics[selected_label]
 
             st.subheader(selected_label)
-            comparison_chart = (
+            comparison_base = (
                 alt.Chart(summary)
                 .mark_line(point=alt.OverlayMarkDef(filled=True, size=110), strokeWidth=3)
                 .encode(
-                    x=alt.X("board_size:Q", title="Board size (N)", axis=alt.Axis(tickMinStep=1)),
+                    x=alt.X(
+                        "board_size:Q",
+                        title="Board size (N)",
+                        axis=alt.Axis(tickMinStep=1),
+                    ),
                     y=alt.Y(f"{selected_metric}:Q", title=selected_label),
                     color=alt.Color(
                         "algorithm:N",
@@ -220,26 +224,27 @@ if page == "Benchmark dashboard":
                     tooltip=[
                         alt.Tooltip("board_size:Q", title="N"),
                         alt.Tooltip("algorithm:N", title="Algorithm"),
-                        alt.Tooltip(f"{selected_metric}:Q", title=selected_label, format=".4f"),
+                        alt.Tooltip(
+                            f"{selected_metric}:Q",
+                            title=selected_label,
+                            format=".4f",
+                        ),
                     ],
                 )
-                .properties(height=380)
+                .properties(height=300)
             )
+            # Separate panels prevent identical Recursive/Iterative series from
+            # hiding one another when their measured values overlap exactly.
+            comparison_chart = comparison_base.facet(
+                column=alt.Column(
+                    "algorithm:N",
+                    sort=["Recursive", "Iterative", "ML-guided"],
+                    header=alt.Header(title=None, labelFontSize=13),
+                ),
+                spacing=14,
+            ).resolve_scale(y="shared")
             st.altair_chart(comparison_chart, width="stretch")
 
-            recursive_values = size_frame.loc[
-                size_frame["algorithm"] == "Recursive", selected_metric
-            ]
-            iterative_values = size_frame.loc[
-                size_frame["algorithm"] == "Iterative", selected_metric
-            ]
-            if not recursive_values.empty and not iterative_values.empty:
-                if float(recursive_values.iloc[0]) == float(iterative_values.iloc[0]):
-                    st.caption(
-                        "Recursive and Iterative have the same value for this metric, "
-                        "so their lines overlap. Dashed-square = Recursive; "
-                        "solid-circle = Iterative; dash-dot-triangle = ML-guided."
-                    )
 
             st.subheader(f"Results for N={chosen_size}")
             metric_columns = st.columns(3)
