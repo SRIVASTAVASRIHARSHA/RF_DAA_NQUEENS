@@ -33,7 +33,7 @@ The ML solver starts from a completely empty board. At every reached partial-boa
 
 The solver records rank_candidates events with each candidate's score and rank, enabling later step-by-step visualization.
 
-The scores are ranking signals, not necessarily calibrated probabilities or guarantees of success.
+The scores are ranking signals, not necessarily calibrated probabilities or guarantees of success. Because each inference batch contains at most N candidate rows, the solver switches scikit-learn's Random Forest inference to one worker to avoid parallel-dispatch overhead on these small batches; the fitted trees and their scores are unchanged.
 
 ## Dataset
 
