@@ -188,6 +188,39 @@ if page == "Benchmark dashboard":
             )
             selected_metric = available_metrics[selected_label]
 
+            metric_values = pd.to_numeric(
+                summary[selected_metric], errors="coerce"
+            )
+            log_scale_allowed = bool(
+                metric_values.notna().all() and (metric_values > 0).all()
+            )
+            scale_options = (
+                ["Linear", "Logarithmic"]
+                if log_scale_allowed
+                else ["Linear"]
+            )
+            selected_scale = st.radio(
+                "Y-axis scale",
+                options=scale_options,
+                horizontal=True,
+                key="benchmark_y_axis_scale",
+                help=(
+                    "Logarithmic scale makes small and large values easier to compare "
+                    "on the same chart. It changes the axis spacing, not the data."
+                ),
+            )
+            if not log_scale_allowed:
+                st.caption(
+                    "Logarithmic scale is unavailable for this metric because at least "
+                    "one algorithm has a zero, negative, or missing value."
+                )
+
+            y_axis_scale = (
+                alt.Scale(type="log", zero=False)
+                if selected_scale == "Logarithmic"
+                else alt.Scale(type="linear", zero=True)
+            )
+
             st.subheader(selected_label)
             # One shared set of axes makes every algorithm comparable at the
             # same N and on the same metric scale.
@@ -203,7 +236,11 @@ if page == "Benchmark dashboard":
                         title="Board size (N)",
                         axis=alt.Axis(tickMinStep=1),
                     ),
-                    y=alt.Y(f"{selected_metric}:Q", title=selected_label),
+                    y=alt.Y(
+                        f"{selected_metric}:Q",
+                        title=selected_label,
+                        scale=y_axis_scale,
+                    ),
                     color=alt.Color(
                         "algorithm:N",
                         title="Algorithm",
