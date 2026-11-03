@@ -374,7 +374,7 @@ def save_benchmark_outputs(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Benchmark recursive, iterative, and Random Forest-guided "
+            "Benchmark recursive, iterative, MRV, and Random Forest-guided "
             "N-Queens backtracking."
         )
     )
