@@ -33,7 +33,8 @@ def run_solver(name, solver, n):
     """Run one solver and print its solution and search statistics."""
     solution, stats, events = solver(n)
 
-    print(f"\n{name.capitalize()} backtracking (N={n})")
+    display_name = {"mrv": "MRV", "ml": "ML-guided"}.get(name, name.capitalize())
+    print(f"\n{display_name} backtracking (N={n})")
     print("-" * 42)
     print_board(solution)
     print(f"Valid solution: {is_valid_solution(solution) if solution else False}")
@@ -52,7 +53,7 @@ def run_solver(name, solver, n):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Solve N-Queens using recursive, iterative, and ML-guided search."
+        description="Solve N-Queens using recursive, iterative, MRV, and ML-guided search."
     )
     parser.add_argument(
         "-n", "--size", type=int, default=8, help="board size (default: 8)"
