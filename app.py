@@ -217,7 +217,7 @@ if page == "Benchmark dashboard":
                 hide_index=True,
             )
 
-            if RUNS_PATH.is_file():
+            if uploaded_summary is None and RUNS_PATH.is_file():
                 with st.expander("Inspect individual timed runs"):
                     try:
                         runs = pd.read_csv(RUNS_PATH)
