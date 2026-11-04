@@ -23,6 +23,15 @@ RUNS_PATH = BENCHMARK_DIR / "benchmark_runs.csv"
 MODEL_METRICS_PATH = ROOT / "results" / "model_metrics.json"
 DATASET_SUMMARY_PATH = ROOT / "data" / "dataset_summary.json"
 RESEARCH_DIR = ROOT / "results" / "research"
+OPTIMIZATION_RESULTS_DIR = (
+    ROOT / "experiments" / "ml_optimization_trial" / "results"
+)
+OPTIMIZATION_SUMMARY_PATH = (
+    OPTIMIZATION_RESULTS_DIR / "final_fair_benchmark_summary.csv"
+)
+N24_SWEEP_PATH = (
+    OPTIMIZATION_RESULTS_DIR / "n24_all_first_row_columns_summary.csv"
+)
 ALGORITHM_COLOR_SCALE = alt.Scale(
     domain=["Recursive", "Iterative", "MRV", "ML-guided"],
     range=["#64748B", "#2563EB", "#8B5CF6", "#F97316"],
@@ -62,7 +71,14 @@ st.markdown(
 st.sidebar.title("Research workspace")
 page = st.sidebar.radio(
     "Navigate",
-    ("Benchmark dashboard", "Solver visualizer", "All-solutions explorer", "Research extensions", "Model & dataset"),
+    (
+        "Benchmark dashboard",
+        "ML optimisation trial (N=8–24)",
+        "Solver visualizer",
+        "All-solutions explorer",
+        "Research extensions",
+        "Model & dataset",
+    ),
 )
 st.sidebar.caption("DAA project · Recursive vs Iterative vs ML-guided")
 
@@ -437,6 +453,11 @@ elif page == "Solver visualizer":
         "Run a solver and move through its recorded events. ML candidate scores "
         "are shown at each state where candidates are ranked."
     )
+    st.caption(
+        "The original interactive solvers support N≤12. Larger-board timing "
+        "results are available in the separate ML optimisation trial page; "
+        "that compiled experiment is not wired into this event-by-event visualizer."
+    )
 
     controls = st.columns(2)
     with controls[0]:
@@ -543,6 +564,263 @@ elif page == "Solver visualizer":
                 f"Predictions: {stats.get('model_predictions', 0)} · "
                 f"predict_proba time: {stats.get('inference_ms', 0):.3f} ms"
             )
+
+
+elif page == "ML optimisation trial (N=8–24)":
+    st.header("ML optimisation trial · Larger board sizes")
+    st.write(
+        "This view presents the separate compiled optimisation experiment. "
+        "It does not merge its timings with the original Python benchmark, "
+        "because the implementations and execution environment differ."
+    )
+
+    if not OPTIMIZATION_SUMMARY_PATH.is_file():
+        st.error(
+            "The committed optimisation summary CSV is missing. Pull the latest "
+            "main branch and check experiments/ml_optimization_trial/results/."
+        )
+    else:
+        try:
+            trial = pd.read_csv(OPTIMIZATION_SUMMARY_PATH)
+            required = {
+                "board_size",
+                "case",
+                "runs",
+                "recursive_median_ms",
+                "iterative_median_ms",
+                "ml_median_ms",
+            }
+            missing = required - set(trial.columns)
+            if missing:
+                st.error(
+                    "Optimisation summary is missing columns: "
+                    + ", ".join(sorted(missing))
+                )
+            else:
+                trial = trial.sort_values("board_size").copy()
+                trial["board_size"] = trial["board_size"].astype(int)
+                trial_sizes = sorted(trial["board_size"].unique().tolist())
+
+                st.success(
+                    f"Loaded compiled benchmark results for N={trial_sizes[0]} "
+                    f"through N={trial_sizes[-1]}."
+                )
+                st.caption(
+                    "These are the recorded experiment results, not fresh timings "
+                    "from the computer currently running this dashboard."
+                )
+
+                chart_frame = trial.melt(
+                    id_vars=["board_size", "runs"],
+                    value_vars=[
+                        "recursive_median_ms",
+                        "iterative_median_ms",
+                        "ml_median_ms",
+                    ],
+                    var_name="solver",
+                    value_name="median_ms",
+                )
+                chart_frame["solver"] = chart_frame["solver"].map(
+                    {
+                        "recursive_median_ms": "Compiled recursive",
+                        "iterative_median_ms": "Compiled iterative",
+                        "ml_median_ms": "Compiled ML-guided",
+                    }
+                )
+                timing_chart = (
+                    alt.Chart(chart_frame)
+                    .mark_line(point=alt.OverlayMarkDef(filled=True, size=85))
+                    .encode(
+                        x=alt.X(
+                            "board_size:Q",
+                            title="Board size (N)",
+                            axis=alt.Axis(tickMinStep=1),
+                        ),
+                        y=alt.Y(
+                            "median_ms:Q",
+                            title="Median runtime (ms)",
+                            scale=alt.Scale(type="log", zero=False),
+                        ),
+                        color=alt.Color("solver:N", title="Implementation"),
+                        tooltip=[
+                            alt.Tooltip("board_size:Q", title="N"),
+                            alt.Tooltip("solver:N", title="Implementation"),
+                            alt.Tooltip("median_ms:Q", title="Median runtime (ms)", format=".6f"),
+                            alt.Tooltip("runs:Q", title="Timed runs"),
+                        ],
+                    )
+                    .properties(height=400)
+                )
+                st.subheader("Empty-board runtime across board sizes")
+                st.altair_chart(timing_chart, width="stretch")
+                st.caption(
+                    "Logarithmic Y-axis is used because runtime spans several "
+                    "orders of magnitude. Each point is the median of the run "
+                    "count shown in the tooltip."
+                )
+
+                selected_n = st.selectbox(
+                    "Inspect board size",
+                    trial_sizes,
+                    index=len(trial_sizes) - 1,
+                    key="optimization_trial_board_size",
+                )
+                selected = trial[trial["board_size"] == selected_n].iloc[0]
+                metric_cols = st.columns(4)
+                metric_cols[0].metric("Board size", f"N={selected_n}")
+                metric_cols[1].metric(
+                    "Compiled recursive",
+                    f"{selected['recursive_median_ms']:.4f} ms",
+                )
+                metric_cols[2].metric(
+                    "Compiled iterative",
+                    f"{selected['iterative_median_ms']:.4f} ms",
+                )
+                metric_cols[3].metric(
+                    "Compiled ML-guided",
+                    f"{selected['ml_median_ms']:.4f} ms",
+                )
+
+                recursive_speedup = (
+                    selected["recursive_median_ms"] / selected["ml_median_ms"]
+                )
+                iterative_speedup = (
+                    selected["iterative_median_ms"] / selected["ml_median_ms"]
+                )
+                speedup_cols = st.columns(2)
+                speedup_cols[0].metric(
+                    "ML speedup vs recursive",
+                    f"{recursive_speedup:.2f}×",
+                    help="Above 1× means ML-guided runtime was lower in this recorded case.",
+                )
+                speedup_cols[1].metric(
+                    "ML speedup vs iterative",
+                    f"{iterative_speedup:.2f}×",
+                    help="Above 1× means ML-guided runtime was lower in this recorded case.",
+                )
+
+                st.subheader("Recorded benchmark data")
+                st.dataframe(trial, width="stretch", hide_index=True)
+
+        except (OSError, pd.errors.ParserError, KeyError, ValueError) as exc:
+            st.error(f"Could not load the optimisation summary: {exc}")
+
+    st.divider()
+    st.subheader("N=24 · First-row queen placement sweep")
+    st.write(
+        "This experiment fixes the queen in row 0, tests each of the 24 possible "
+        "columns, and compares the compiled implementations. It is separate from "
+        "the empty-board benchmark above."
+    )
+
+    if not N24_SWEEP_PATH.is_file():
+        st.info("The N=24 first-row sweep CSV is not present in the repository.")
+    else:
+        try:
+            sweep = pd.read_csv(N24_SWEEP_PATH)
+            sweep_required = {
+                "fixed_first_row_col",
+                "speedup_vs_recursive",
+                "speedup_vs_iterative",
+            }
+            sweep_missing = sweep_required - set(sweep.columns)
+            if sweep_missing:
+                st.error(
+                    "N=24 sweep CSV is missing columns: "
+                    + ", ".join(sorted(sweep_missing))
+                )
+            else:
+                faster_recursive = int((sweep["speedup_vs_recursive"] > 1).sum())
+                faster_iterative = int((sweep["speedup_vs_iterative"] > 1).sum())
+                median_recursive = float(sweep["speedup_vs_recursive"].median())
+                median_iterative = float(sweep["speedup_vs_iterative"].median())
+
+                sweep_cols = st.columns(4)
+                sweep_cols[0].metric(
+                    "Columns faster than recursive",
+                    f"{faster_recursive}/24",
+                )
+                sweep_cols[1].metric(
+                    "Columns faster than iterative",
+                    f"{faster_iterative}/24",
+                )
+                sweep_cols[2].metric(
+                    "Median speedup vs recursive",
+                    f"{median_recursive:.2f}×",
+                )
+                sweep_cols[3].metric(
+                    "Median speedup vs iterative",
+                    f"{median_iterative:.2f}×",
+                )
+
+                sweep_long = sweep.melt(
+                    id_vars=["fixed_first_row_col"],
+                    value_vars=[
+                        "speedup_vs_recursive",
+                        "speedup_vs_iterative",
+                    ],
+                    var_name="comparison",
+                    value_name="speedup",
+                )
+                sweep_long["comparison"] = sweep_long["comparison"].map(
+                    {
+                        "speedup_vs_recursive": "vs compiled recursive",
+                        "speedup_vs_iterative": "vs compiled iterative",
+                    }
+                )
+                sweep_chart = (
+                    alt.Chart(sweep_long)
+                    .mark_line(point=True)
+                    .encode(
+                        x=alt.X(
+                            "fixed_first_row_col:Q",
+                            title="Fixed queen column in row 0",
+                            axis=alt.Axis(tickMinStep=1),
+                        ),
+                        y=alt.Y(
+                            "speedup:Q",
+                            title="ML speedup ratio (above 1× = ML faster)",
+                            scale=alt.Scale(type="log", zero=False),
+                        ),
+                        color=alt.Color("comparison:N", title="Comparison"),
+                        tooltip=[
+                            alt.Tooltip("fixed_first_row_col:Q", title="Fixed column"),
+                            alt.Tooltip("comparison:N", title="Comparison"),
+                            alt.Tooltip("speedup:Q", title="Speedup", format=".3f"),
+                        ],
+                    )
+                    .properties(height=340)
+                )
+                baseline = (
+                    alt.Chart(pd.DataFrame({"baseline": [1.0]}))
+                    .mark_rule(strokeDash=[5, 4], color="#64748B")
+                    .encode(y="baseline:Q")
+                )
+                st.altair_chart(sweep_chart + baseline, width="stretch")
+                st.dataframe(sweep, width="stretch", hide_index=True)
+                st.caption(
+                    "The result is not universal: ML was faster in 18/24 positions "
+                    "versus compiled recursive and 19/24 versus compiled iterative. "
+                    "A fixed first-row queen does not represent arbitrary pre-placed "
+                    "queens or every possible search state."
+                )
+        except (OSError, pd.errors.ParserError, KeyError, ValueError) as exc:
+            st.error(f"Could not load the N=24 sweep: {exc}")
+
+    with st.expander("How to interpret these results"):
+        st.markdown(
+            """
+            - The optimisation trial uses a compact Random Forest and compiled
+              feature extraction/tree traversal. Its recursive and iterative
+              baselines are also compiled.
+            - The model was trained and validated on N=4–10. N=14–24 results are
+              extrapolation beyond the training board sizes.
+            - The recorded measurements were collected on Linux x86_64 with
+              Python 3.13.5. They are not MacBook Air M5 timings.
+            - This benchmark page reads saved experiment CSVs. It does not run
+              the experimental solver interactively.
+            """
+        )
 
 
 elif page == "All-solutions explorer":
