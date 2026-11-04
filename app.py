@@ -148,7 +148,7 @@ if page == "Benchmark dashboard":
             live_sizes = st.multiselect(
                 "Board sizes to benchmark",
                 options=list(range(4, 25)),
-                default=list(range(4, 25, 2)),
+                default=list(range(4, 25)),
                 help="Select one or more board sizes. Odd sizes are available too.",
                 key="live_trial_sizes",
             )
@@ -422,10 +422,16 @@ if page == "Benchmark dashboard":
                 })
                 .fillna(summary["algorithm"].astype(str))
             )
-            if "MRV" not in set(summary["algorithm"]):
+            if data_source_label.startswith("Live compiled"):
+                st.caption(
+                    "This live compiled experiment intentionally compares three "
+                    "approaches: recursive, iterative, and ML-guided. MRV remains "
+                    "available in the saved original Phase 6 benchmark when present."
+                )
+            elif "MRV" not in set(summary["algorithm"]):
                 st.warning(
-                    "This benchmark summary predates the MRV baseline. Regenerate it "
-                    "with 'python -m src.benchmark' to include all four algorithms."
+                    "This saved benchmark summary predates the MRV baseline. Regenerate it "
+                    "with 'python -m src.benchmark' to include all four original algorithms."
                 )
             else:
                 st.caption(
