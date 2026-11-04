@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+results/compact_rf.joblib
+results/fair_run/
+results/depth_sweep_runs.csv
+results/depth_sweep_summary.csv

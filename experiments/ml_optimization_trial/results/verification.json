@@ -1,0 +1,8 @@
+{
+  "validation_feature_rows_checked": 9333,
+  "feature_max_abs_difference": 0.0,
+  "validation_forest_probability_max_abs_difference": 3.219646771412954e-15,
+  "train_validation_state_id_overlap": 0,
+  "compiled_baseline_parity": "passed for N=1..14 on empty, first-row column 0, and first-row centre configurations; solution outputs and search counters match Python solvers",
+  "benchmark_solution_validation": "all timed solutions valid and all algorithms agreed on solvability for benchmarked instances"
+}

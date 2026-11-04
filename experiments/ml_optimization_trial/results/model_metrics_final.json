@@ -1,0 +1,20 @@
+{
+  "model": "RandomForestClassifier (compact)",
+  "n_estimators": 24,
+  "max_depth": 7,
+  "min_samples_leaf": 2,
+  "max_features": "sqrt",
+  "class_weight": "balanced_subsample",
+  "training_examples": 37426,
+  "validation_examples": 9333,
+  "validation_roc_auc": 0.9341703837612318,
+  "validation_average_precision": 0.7914338839526406,
+  "validation_balanced_accuracy_at_0_5": 0.8417404825977655,
+  "solvable_state_top1_hit_rate": 0.8918722786647315,
+  "ascending_column_top1_hit_rate": 0.7706821480406386,
+  "full_validation_feature_parity_max_abs_error": 0.0,
+  "full_validation_forest_probability_max_abs_error": 3.219646771412954e-15,
+  "train_validation_state_id_overlap": 0,
+  "training_board_sizes": [4,5,6,7,8,9,10],
+  "validation_board_sizes": [4,5,6,7,8,9,10]
+}

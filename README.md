@@ -256,3 +256,13 @@ python -m unittest discover -s tests -v
 - Execute regression tests and review any failures before claiming verified status.
 - Review the dashboard and regenerate the final report using actual outputs.
 - Prepare final submission formatting, references, and viva material.
+
+## Large-board ML optimisation experiment
+
+A separate experimental implementation is available under experiments/ml_optimization_trial/. It uses an 18-feature, board-size-independent representation, a compact Random Forest, Numba-compiled feature extraction and forest scoring, and equally compiled recursive/iterative bit-mask baselines. The experiment is intended for boards up to N=24 and preserves complete backtracking: ML ranks legal candidates but does not discard alternatives.
+
+The committed experiment report and benchmark summaries show a conditional performance advantage, not a universal win. On N=24, testing all 24 possible first-row queen columns (five timed repetitions per algorithm and position) found the ML-guided solver faster in 18/24 positions versus compiled recursive backtracking and 19/24 versus compiled iterative backtracking. Smaller boards were generally better served by conventional backtracking, and performance varied with the initial queen position.
+
+The model was trained/validated on N=4–10 only. N=11–24 results are out-of-training-range extrapolation and must be described as such. Re-run the benchmark on the target machine before quoting absolute timings.
+
+See experiments/ml_optimization_trial/README.md for setup, training, benchmark commands, methodology, and limitations.
