@@ -3,12 +3,6 @@
 from __future__ import annotations
 
 import json
-import platform
-import subprocess
-import sys
-import time
-import zipfile
-from datetime import datetime
 from pathlib import Path
 
 import altair as alt
@@ -35,12 +29,6 @@ OPTIMIZATION_RESULTS_DIR = (
 OPTIMIZATION_SUMMARY_PATH = (
     OPTIMIZATION_RESULTS_DIR / "final_fair_benchmark_summary.csv"
 )
-TRIAL_DIR = ROOT / "experiments" / "ml_optimization_trial"
-TRIAL_ARCHIVE_PATH = TRIAL_DIR / "source_code.zip"
-TRIAL_RUNNER_PATH = TRIAL_DIR / "run_fair_benchmark.py"
-TRIAL_TRAINER_PATH = TRIAL_DIR / "train_compact_model.py"
-TRIAL_MODEL_PATH = OPTIMIZATION_RESULTS_DIR / "compact_rf.joblib"
-TRIAL_LIVE_OUTPUT_DIR = OPTIMIZATION_RESULTS_DIR / "fair_run"
 N24_SWEEP_PATH = (
     OPTIMIZATION_RESULTS_DIR / "n24_all_first_row_columns_summary.csv"
 )
@@ -148,663 +136,322 @@ def replay_events(events: list[dict], n: int, step: int) -> list[int]:
 if page == "Benchmark dashboard":
     st.header("Benchmark dashboard")
     st.write(
-        "Run the three comparable compiled approaches live during the presentation. "
-        "The graph below is built from measurements produced by the current run."
+        "Explore repeated-run timing, search effort, and memory measurements "
+        "from Phase 6."
     )
 
-    st.subheader("Live compiled benchmark · N=4 to N=24")
-    st.caption(
-        "This experiment runs compiled recursive backtracking, compiled iterative "
-        "backtracking, and compiled Random Forest-guided backtracking. It is separate "
-        "from the original Python benchmark shown in the collapsed legacy section."
+    uploaded_summary = st.file_uploader(
+        "Use a benchmark_summary.csv file (optional)",
+        type=("csv",),
+        key="summary_upload",
     )
-
-    size_col, repeat_col = st.columns([2, 1])
-    with size_col:
-        live_sizes = st.multiselect(
-            "Board sizes to execute",
-            options=list(range(4, 25)),
-            default=list(range(4, 25)),
-            help=(
-                "Choose one board size for a focused live comparison, or several "
-                "sizes to build a live performance curve. The maximum is 24×24."
-            ),
-            key="live_trial_sizes",
-        )
-    with repeat_col:
-        live_repeats = st.number_input(
-            "Timed repetitions",
-            min_value=1,
-            max_value=20,
-            value=5,
-            step=1,
-            key="live_trial_repeats",
-        )
-
-    st.caption(
-        "The compact Random Forest is trained on N=4–10. Results for larger boards "
-        "are an extrapolation of the learned ranking policy. The benchmark warms up "
-        "compiled code before timing; JIT compilation and model training/loading are "
-        "not included in solver runtime."
-    )
-
-    run_live = st.button(
-        "Run live benchmark and generate graph",
-        type="primary",
-        disabled=not live_sizes,
-        key="run_live_compiled_benchmark",
-    )
-
-    if run_live:
+    if uploaded_summary is not None:
         try:
-            if not TRIAL_RUNNER_PATH.is_file():
-                if not TRIAL_ARCHIVE_PATH.is_file():
-                    raise FileNotFoundError(
-                        "The optimisation source archive is missing: "
-                        f"{TRIAL_ARCHIVE_PATH}"
-                    )
-                with zipfile.ZipFile(TRIAL_ARCHIVE_PATH) as archive:
-                    bad_member = archive.testzip()
-                    if bad_member is not None:
-                        raise RuntimeError(
-                            "The optimisation source archive failed its CRC check "
-                            f"at {bad_member}."
-                        )
-                    root_resolved = TRIAL_DIR.resolve()
-                    for member in archive.infolist():
-                        destination = (TRIAL_DIR / member.filename).resolve()
-                        if destination != root_resolved and root_resolved not in destination.parents:
-                            raise RuntimeError(
-                                "Unsafe path found in the optimisation source archive."
-                            )
-                    archive.extractall(TRIAL_DIR)
+            summary = pd.read_csv(uploaded_summary)
+        except Exception as exc:
+            st.error(f"Could not read the uploaded CSV: {exc}")
+            summary = None
+    else:
+        summary = load_summary()
 
-            if not TRIAL_RUNNER_PATH.is_file():
-                raise FileNotFoundError(
-                    "run_fair_benchmark.py was not present after extracting "
-                    "source_code.zip."
-                )
-
-            if not TRIAL_MODEL_PATH.is_file():
-                with st.spinner(
-                    "Training the compact Random Forest because no trained trial "
-                    "model was found..."
-                ):
-                    training = subprocess.run(
-                        [sys.executable, str(TRIAL_TRAINER_PATH)],
-                        cwd=str(TRIAL_DIR),
-                        capture_output=True,
-                        text=True,
-                        check=False,
-                        timeout=300,
-                    )
-                if training.returncode != 0:
-                    st.error("The compact model could not be trained.")
-                    st.code(training.stderr or training.stdout, language="text")
-                    st.info(
-                        "Install the experiment dependencies from the project root "
-                        "with: python -m pip install -r "
-                        "experiments/ml_optimization_trial/requirements.txt"
-                    )
-                    raise RuntimeError("Model training failed; benchmark was not run.")
-
-            command = [
-                sys.executable,
-                str(TRIAL_RUNNER_PATH),
-                "--sizes",
-                *[str(size) for size in sorted(live_sizes)],
-                "--repeats",
-                str(int(live_repeats)),
-            ]
-            started_at = time.time()
-            started_label = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-            with st.spinner(
-                "Running all three compiled solvers, validating solutions, and "
-                "measuring each selected board size..."
-            ):
-                benchmark = subprocess.run(
-                    command,
-                    cwd=str(TRIAL_DIR),
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=600,
-                )
-
-            if benchmark.returncode != 0:
-                st.error("The live benchmark process failed.")
-                st.code(benchmark.stderr or benchmark.stdout, language="text")
-                st.info(
-                    "Check that Numba and the experiment packages are installed: "
-                    "python -m pip install -r "
-                    "experiments/ml_optimization_trial/requirements.txt"
+    if summary is None:
+        st.info(
+            "No benchmark summary is available yet. Run "
+            "'python -m src.benchmark' from the project root, then reopen this page."
+        )
+    else:
+        required_columns = {
+            "board_size",
+            "algorithm",
+            "median_execution_time_ms",
+            "mean_execution_time_ms",
+            "median_explored_states",
+            "median_backtracks",
+            "median_candidate_checks",
+        }
+        missing = required_columns - set(summary.columns)
+        if missing:
+            st.error("Benchmark CSV is missing columns: " + ", ".join(sorted(missing)))
+        else:
+            summary["algorithm"] = (
+                summary["algorithm"]
+                .astype(str)
+                .str.lower()
+                .map({
+                    "recursive": "Recursive",
+                    "iterative": "Iterative",
+                    "mrv": "MRV",
+                    "ml": "ML-guided",
+                })
+                .fillna(summary["algorithm"].astype(str))
+            )
+            if "MRV" not in set(summary["algorithm"]):
+                st.warning(
+                    "This benchmark summary predates the MRV baseline. Regenerate it "
+                    "with 'python -m src.benchmark' to include all four algorithms."
                 )
             else:
-                required_live_columns = {
-                    "board_size",
-                    "recursive_median_ms",
-                    "iterative_median_ms",
-                    "ml_median_ms",
-                }
-                candidates = (
-                    sorted(
-                        TRIAL_LIVE_OUTPUT_DIR.rglob("*.csv"),
-                        key=lambda path: path.stat().st_mtime,
-                        reverse=True,
-                    )
-                    if TRIAL_LIVE_OUTPUT_DIR.is_dir()
-                    else []
+                st.caption(
+                    "MRV assigns rows out of order and recomputes legal domains across "
+                    "remaining rows. Its candidate-check count is therefore not directly "
+                    "equivalent to fixed-row candidate checks; use total runtime as the "
+                    "direct cost comparison."
                 )
-                live_summary = None
-                live_summary_path = None
-                for candidate in candidates:
-                    try:
-                        candidate_frame = pd.read_csv(candidate)
-                    except (OSError, pd.errors.ParserError):
-                        continue
-                    if required_live_columns.issubset(candidate_frame.columns):
-                        if candidate.stat().st_mtime >= started_at - 3:
-                            live_summary = candidate_frame
-                            live_summary_path = candidate
-                            break
 
-                if live_summary is None:
-                    st.error(
-                        "The benchmark finished, but no fresh summary CSV with the "
-                        "expected timing columns was found in results/fair_run. "
-                        "Review the command output below."
-                    )
-                    st.code(benchmark.stdout or "(No standard output.)", language="text")
-                else:
-                    live_summary["board_size"] = pd.to_numeric(
-                        live_summary["board_size"], errors="coerce"
-                    )
-                    live_summary = live_summary[
-                        live_summary["board_size"].isin(sorted(live_sizes))
-                    ].copy()
-                    st.session_state["live_trial_summary"] = live_summary
-                    st.session_state["live_trial_timestamp"] = started_label
-                    st.session_state["live_trial_output"] = str(live_summary_path)
-                    st.session_state["live_trial_stdout"] = benchmark.stdout
-                    st.session_state["live_trial_platform"] = (
-                        f"{platform.system()} {platform.release()} · "
-                        f"Python {platform.python_version()}"
-                    )
-                    st.success(
-                        "Live benchmark completed. The chart below uses the newly "
-                        "measured results from this run."
-                    )
-        except subprocess.TimeoutExpired:
-            st.error(
-                "The benchmark exceeded the 10-minute safety limit. Try fewer board "
-                "sizes or fewer repetitions."
-            )
-        except (OSError, zipfile.BadZipFile, RuntimeError, ValueError) as exc:
-            st.error(str(exc))
+            sizes = sorted(summary["board_size"].dropna().astype(int).unique())
+            chosen_size = st.selectbox("Board size", sizes, index=0)
+            size_frame = summary[summary["board_size"] == chosen_size].copy()
 
-    live_result = st.session_state.get("live_trial_summary")
-    if isinstance(live_result, pd.DataFrame) and not live_result.empty:
-        live_result = live_result.sort_values("board_size").copy()
-        timestamp = st.session_state.get("live_trial_timestamp", "Previous run")
-        st.caption(
-            f"Measured live at {timestamp} · "
-            f"{st.session_state.get('live_trial_platform', 'Local environment')} · "
-            f"Source: {st.session_state.get('live_trial_output', 'fair_run summary')}"
-        )
-
-        case_values = (
-            sorted(live_result["case"].dropna().astype(str).unique().tolist())
-            if "case" in live_result.columns
-            else []
-        )
-        if len(case_values) > 1:
-            selected_case = st.selectbox(
-                "Benchmark case",
-                case_values,
-                key="live_trial_case",
-            )
-            plotted_result = live_result[
-                live_result["case"].astype(str) == selected_case
-            ].copy()
-        else:
-            plotted_result = live_result.copy()
-            if case_values:
-                st.caption(f"Benchmark case: {case_values[0]}")
-
-        chart_columns = [
-            "recursive_median_ms",
-            "iterative_median_ms",
-            "ml_median_ms",
-        ]
-        chart_frame = plotted_result.melt(
-            id_vars=["board_size"],
-            value_vars=chart_columns,
-            var_name="approach",
-            value_name="median_runtime_ms",
-        )
-        chart_frame["approach"] = chart_frame["approach"].map(
-            {
-                "recursive_median_ms": "Compiled recursive",
-                "iterative_median_ms": "Compiled iterative",
-                "ml_median_ms": "Compiled ML-guided",
+            metric_options = {
+                "Median execution time (ms)": "median_execution_time_ms",
+                "Mean execution time (ms)": "mean_execution_time_ms",
+                "Explored states (median)": "median_explored_states",
+                "Backtracks (median)": "median_backtracks",
+                "Candidate checks (median)": "median_candidate_checks",
+                "Peak traced memory (KiB)": "peak_traced_memory_kb",
+                "ML inference time (ms)": "median_inference_time_ms",
             }
-        )
-        live_chart = (
-            alt.Chart(chart_frame)
-            .mark_line(point=alt.OverlayMarkDef(filled=True, size=100))
-            .encode(
+            available_metrics = {
+                label: column
+                for label, column in metric_options.items()
+                if column in summary.columns
+            }
+            selected_label = st.selectbox(
+                "Comparison metric", list(available_metrics.keys())
+            )
+            selected_metric = available_metrics[selected_label]
+
+            metric_values = pd.to_numeric(
+                summary[selected_metric], errors="coerce"
+            )
+            log_scale_allowed = bool(
+                metric_values.notna().all() and (metric_values > 0).all()
+            )
+            scale_options = (
+                ["Linear", "Logarithmic"]
+                if log_scale_allowed
+                else ["Linear"]
+            )
+            default_log_metrics = {
+                "median_execution_time_ms",
+                "mean_execution_time_ms",
+                "peak_traced_memory_kb",
+                "median_inference_time_ms",
+            }
+            default_scale_index = (
+                1
+                if log_scale_allowed and selected_metric in default_log_metrics
+                else 0
+            )
+            selected_scale = st.radio(
+                "Y-axis scale",
+                options=scale_options,
+                index=default_scale_index,
+                horizontal=True,
+                key="benchmark_y_axis_scale_v2",
+                help=(
+                    "Logarithmic scale makes small and large positive values easier "
+                    "to compare on one chart. It changes axis spacing, not the data."
+                ),
+            )
+            if not log_scale_allowed:
+                st.caption(
+                    "Logarithmic scale is unavailable for this metric because at least "
+                    "one algorithm has a zero, negative, or missing value."
+                )
+
+            y_axis_scale = (
+                alt.Scale(type="log", zero=False)
+                if selected_scale == "Logarithmic"
+                else alt.Scale(type="linear", zero=True)
+            )
+
+            st.subheader(selected_label)
+            # Draw Iterative first, then ML, then Recursive. The dashed Recursive
+            # stroke sits above the Iterative stroke when their values coincide,
+            # while the hollow circle/square markers let both remain identifiable.
+            base_chart = alt.Chart(summary).encode(
                 x=alt.X(
                     "board_size:Q",
                     title="Board size (N)",
                     axis=alt.Axis(tickMinStep=1),
                 ),
                 y=alt.Y(
-                    "median_runtime_ms:Q",
-                    title="Median runtime (ms)",
-                    scale=alt.Scale(type="log", zero=False),
+                    f"{selected_metric}:Q",
+                    title=selected_label,
+                    scale=y_axis_scale,
                 ),
-                color=alt.Color("approach:N", title="Approach"),
                 tooltip=[
-                    alt.Tooltip("board_size:Q", title="Board size"),
-                    alt.Tooltip("approach:N", title="Approach"),
+                    alt.Tooltip("board_size:Q", title="N"),
+                    alt.Tooltip("algorithm:N", title="Algorithm"),
                     alt.Tooltip(
-                        "median_runtime_ms:Q",
-                        title="Median runtime (ms)",
+                        f"{selected_metric}:Q",
+                        title=selected_label,
                         format=".6f",
                     ),
                 ],
             )
-            .properties(height=410)
-        )
-        st.subheader("Live runtime comparison")
-        st.altair_chart(live_chart, width="stretch")
-        st.caption(
-            "The plotted points come from the benchmark run just completed above. "
-            "The logarithmic Y-axis helps compare runtimes across different scales."
-        )
 
-        available_live_sizes = sorted(
-            plotted_result["board_size"].dropna().astype(int).unique().tolist()
-        )
-        if available_live_sizes:
-            inspect_n = st.selectbox(
-                "Inspect measured board size",
-                available_live_sizes,
-                index=len(available_live_sizes) - 1,
-                key="live_trial_inspect_n",
+            iterative_data = base_chart.transform_filter(
+                alt.datum.algorithm == "Iterative"
             )
-            selected_row = plotted_result[
-                plotted_result["board_size"].astype(int) == inspect_n
-            ].iloc[-1]
-            metric_columns = st.columns(3)
-            metric_columns[0].metric(
-                "Compiled recursive",
-                f"{selected_row['recursive_median_ms']:.6f} ms",
+            recursive_data = base_chart.transform_filter(
+                alt.datum.algorithm == "Recursive"
             )
-            metric_columns[1].metric(
-                "Compiled iterative",
-                f"{selected_row['iterative_median_ms']:.6f} ms",
+            mrv_data = base_chart.transform_filter(
+                alt.datum.algorithm == "MRV"
             )
-            metric_columns[2].metric(
-                "Compiled ML-guided",
-                f"{selected_row['ml_median_ms']:.6f} ms",
+            ml_data = base_chart.transform_filter(
+                alt.datum.algorithm == "ML-guided"
             )
 
-            recursive_speedup = (
-                float(selected_row["recursive_median_ms"])
-                / float(selected_row["ml_median_ms"])
+            iterative_line = iterative_data.mark_line(
+                color="#2563EB",
+                strokeWidth=3,
             )
-            iterative_speedup = (
-                float(selected_row["iterative_median_ms"])
-                / float(selected_row["ml_median_ms"])
+            mrv_line = mrv_data.mark_line(
+                color="#8B5CF6",
+                strokeWidth=3,
+                strokeDash=[5, 3],
             )
-            speedup_columns = st.columns(2)
-            speedup_columns[0].metric(
-                "ML speedup vs recursive",
-                f"{recursive_speedup:.2f}×",
-                help="Above 1× means ML-guided runtime was lower in this run.",
+            ml_line = ml_data.mark_line(
+                color="#F97316",
+                strokeWidth=3,
+                strokeDash=[3, 2],
             )
-            speedup_columns[1].metric(
-                "ML speedup vs iterative",
-                f"{iterative_speedup:.2f}×",
-                help="Above 1× means ML-guided runtime was lower in this run.",
-            )
-
-        st.subheader("Measured data from this run")
-        st.dataframe(plotted_result, width="stretch", hide_index=True)
-        with st.expander("Show benchmark command output"):
-            st.code(
-                st.session_state.get("live_trial_stdout", "(No output captured.)"),
-                language="text",
+            recursive_line = recursive_data.mark_line(
+                color="#64748B",
+                strokeWidth=3.5,
+                strokeDash=[7, 4],
             )
 
-    st.divider()
-    st.subheader("Legacy Python benchmark · original implementation (N≤12)")
-    st.caption(
-        "This section reads the original project's benchmark_summary.csv. "
-        "It is retained for the earlier Python implementation and is not the "
-        "live compiled three-approach experiment above."
-    )
-    with st.expander("Open original benchmark dashboard", expanded=False):
-        # Legacy benchmark content remains available below.
-
-        uploaded_summary = st.file_uploader(
-            "Use a benchmark_summary.csv file (optional)",
-            type=("csv",),
-            key="summary_upload",
-        )
-        if uploaded_summary is not None:
-            try:
-                summary = pd.read_csv(uploaded_summary)
-            except Exception as exc:
-                st.error(f"Could not read the uploaded CSV: {exc}")
-                summary = None
-        else:
-            summary = load_summary()
-    
-        if summary is None:
-            st.info(
-                "No benchmark summary is available yet. Run "
-                "'python -m src.benchmark' from the project root, then reopen this page."
+            iterative_points = iterative_data.mark_point(
+                shape="circle",
+                filled=False,
+                size=210,
+                strokeWidth=3,
+                color="#2563EB",
             )
-        else:
-            required_columns = {
-                "board_size",
-                "algorithm",
-                "median_execution_time_ms",
-                "mean_execution_time_ms",
-                "median_explored_states",
-                "median_backtracks",
-                "median_candidate_checks",
-            }
-            missing = required_columns - set(summary.columns)
-            if missing:
-                st.error("Benchmark CSV is missing columns: " + ", ".join(sorted(missing)))
-            else:
-                summary["algorithm"] = (
-                    summary["algorithm"]
-                    .astype(str)
-                    .str.lower()
-                    .map({
-                        "recursive": "Recursive",
-                        "iterative": "Iterative",
-                        "mrv": "MRV",
-                        "ml": "ML-guided",
-                    })
-                    .fillna(summary["algorithm"].astype(str))
+            mrv_points = mrv_data.mark_point(
+                shape="diamond",
+                filled=False,
+                size=190,
+                strokeWidth=3,
+                color="#8B5CF6",
+            )
+            ml_points = ml_data.mark_point(
+                shape="triangle",
+                filled=False,
+                size=190,
+                strokeWidth=3,
+                color="#F97316",
+            )
+            recursive_points = recursive_data.mark_point(
+                shape="square",
+                filled=False,
+                size=125,
+                strokeWidth=3,
+                color="#64748B",
+            )
+
+            comparison_chart = alt.layer(
+                iterative_line,
+                mrv_line,
+                ml_line,
+                recursive_line,
+                iterative_points,
+                mrv_points,
+                ml_points,
+                recursive_points,
+            ).properties(height=420)
+            st.altair_chart(comparison_chart, width="stretch")
+
+            # Explicit legend for the separately layered algorithm series.
+            legend_columns = st.columns(4)
+            legend_columns[0].markdown(
+                '<span style="color:#64748B;font-size:1.15rem">■</span> **Recursive** · dashed',
+                unsafe_allow_html=True,
+            )
+            legend_columns[1].markdown(
+                '<span style="color:#2563EB;font-size:1.15rem">●</span> **Iterative** · solid',
+                unsafe_allow_html=True,
+            )
+            legend_columns[2].markdown(
+                '<span style="color:#8B5CF6;font-size:1.15rem">◆</span> **MRV** · dashed',
+                unsafe_allow_html=True,
+            )
+            legend_columns[3].markdown(
+                '<span style="color:#F97316;font-size:1.15rem">▲</span> **ML-guided** · dotted',
+                unsafe_allow_html=True,
+            )
+
+            recursive_values = size_frame.loc[
+                size_frame["algorithm"] == "Recursive", selected_metric
+            ]
+            iterative_values = size_frame.loc[
+                size_frame["algorithm"] == "Iterative", selected_metric
+            ]
+            if (
+                not recursive_values.empty
+                and not iterative_values.empty
+                and float(recursive_values.iloc[0]) == float(iterative_values.iloc[0])
+            ):
+                st.caption(
+                    "Recursive and Iterative have identical values for this board size. "
+                    "Their strokes overlap by definition; the dashed line and hollow "
+                    "square/circle markers distinguish the two without changing data."
                 )
-                if "MRV" not in set(summary["algorithm"]):
-                    st.warning(
-                        "This benchmark summary predates the MRV baseline. Regenerate it "
-                        "with 'python -m src.benchmark' to include all four algorithms."
-                    )
-                else:
-                    st.caption(
-                        "MRV assigns rows out of order and recomputes legal domains across "
-                        "remaining rows. Its candidate-check count is therefore not directly "
-                        "equivalent to fixed-row candidate checks; use total runtime as the "
-                        "direct cost comparison."
-                    )
-    
-                sizes = sorted(summary["board_size"].dropna().astype(int).unique())
-                chosen_size = st.selectbox("Board size", sizes, index=0)
-                size_frame = summary[summary["board_size"] == chosen_size].copy()
-    
-                metric_options = {
-                    "Median execution time (ms)": "median_execution_time_ms",
-                    "Mean execution time (ms)": "mean_execution_time_ms",
-                    "Explored states (median)": "median_explored_states",
-                    "Backtracks (median)": "median_backtracks",
-                    "Candidate checks (median)": "median_candidate_checks",
-                    "Peak traced memory (KiB)": "peak_traced_memory_kb",
-                    "ML inference time (ms)": "median_inference_time_ms",
-                }
-                available_metrics = {
-                    label: column
-                    for label, column in metric_options.items()
-                    if column in summary.columns
-                }
-                selected_label = st.selectbox(
-                    "Comparison metric", list(available_metrics.keys())
-                )
-                selected_metric = available_metrics[selected_label]
-    
-                metric_values = pd.to_numeric(
-                    summary[selected_metric], errors="coerce"
-                )
-                log_scale_allowed = bool(
-                    metric_values.notna().all() and (metric_values > 0).all()
-                )
-                scale_options = (
-                    ["Linear", "Logarithmic"]
-                    if log_scale_allowed
-                    else ["Linear"]
-                )
-                default_log_metrics = {
-                    "median_execution_time_ms",
-                    "mean_execution_time_ms",
-                    "peak_traced_memory_kb",
-                    "median_inference_time_ms",
-                }
-                default_scale_index = (
-                    1
-                    if log_scale_allowed and selected_metric in default_log_metrics
-                    else 0
-                )
-                selected_scale = st.radio(
-                    "Y-axis scale",
-                    options=scale_options,
-                    index=default_scale_index,
-                    horizontal=True,
-                    key="benchmark_y_axis_scale_v2",
-                    help=(
-                        "Logarithmic scale makes small and large positive values easier "
-                        "to compare on one chart. It changes axis spacing, not the data."
-                    ),
-                )
-                if not log_scale_allowed:
-                    st.caption(
-                        "Logarithmic scale is unavailable for this metric because at least "
-                        "one algorithm has a zero, negative, or missing value."
-                    )
-    
-                y_axis_scale = (
-                    alt.Scale(type="log", zero=False)
-                    if selected_scale == "Logarithmic"
-                    else alt.Scale(type="linear", zero=True)
-                )
-    
-                st.subheader(selected_label)
-                # Draw Iterative first, then ML, then Recursive. The dashed Recursive
-                # stroke sits above the Iterative stroke when their values coincide,
-                # while the hollow circle/square markers let both remain identifiable.
-                base_chart = alt.Chart(summary).encode(
-                    x=alt.X(
-                        "board_size:Q",
-                        title="Board size (N)",
-                        axis=alt.Axis(tickMinStep=1),
-                    ),
-                    y=alt.Y(
-                        f"{selected_metric}:Q",
-                        title=selected_label,
-                        scale=y_axis_scale,
-                    ),
-                    tooltip=[
-                        alt.Tooltip("board_size:Q", title="N"),
-                        alt.Tooltip("algorithm:N", title="Algorithm"),
-                        alt.Tooltip(
-                            f"{selected_metric}:Q",
-                            title=selected_label,
-                            format=".6f",
-                        ),
-                    ],
-                )
-    
-                iterative_data = base_chart.transform_filter(
-                    alt.datum.algorithm == "Iterative"
-                )
-                recursive_data = base_chart.transform_filter(
-                    alt.datum.algorithm == "Recursive"
-                )
-                mrv_data = base_chart.transform_filter(
-                    alt.datum.algorithm == "MRV"
-                )
-                ml_data = base_chart.transform_filter(
-                    alt.datum.algorithm == "ML-guided"
-                )
-    
-                iterative_line = iterative_data.mark_line(
-                    color="#2563EB",
-                    strokeWidth=3,
-                )
-                mrv_line = mrv_data.mark_line(
-                    color="#8B5CF6",
-                    strokeWidth=3,
-                    strokeDash=[5, 3],
-                )
-                ml_line = ml_data.mark_line(
-                    color="#F97316",
-                    strokeWidth=3,
-                    strokeDash=[3, 2],
-                )
-                recursive_line = recursive_data.mark_line(
-                    color="#64748B",
-                    strokeWidth=3.5,
-                    strokeDash=[7, 4],
-                )
-    
-                iterative_points = iterative_data.mark_point(
-                    shape="circle",
-                    filled=False,
-                    size=210,
-                    strokeWidth=3,
-                    color="#2563EB",
-                )
-                mrv_points = mrv_data.mark_point(
-                    shape="diamond",
-                    filled=False,
-                    size=190,
-                    strokeWidth=3,
-                    color="#8B5CF6",
-                )
-                ml_points = ml_data.mark_point(
-                    shape="triangle",
-                    filled=False,
-                    size=190,
-                    strokeWidth=3,
-                    color="#F97316",
-                )
-                recursive_points = recursive_data.mark_point(
-                    shape="square",
-                    filled=False,
-                    size=125,
-                    strokeWidth=3,
-                    color="#64748B",
-                )
-    
-                comparison_chart = alt.layer(
-                    iterative_line,
-                    mrv_line,
-                    ml_line,
-                    recursive_line,
-                    iterative_points,
-                    mrv_points,
-                    ml_points,
-                    recursive_points,
-                ).properties(height=420)
-                st.altair_chart(comparison_chart, width="stretch")
-    
-                # Explicit legend for the separately layered algorithm series.
-                legend_columns = st.columns(4)
-                legend_columns[0].markdown(
-                    '<span style="color:#64748B;font-size:1.15rem">■</span> **Recursive** · dashed',
-                    unsafe_allow_html=True,
-                )
-                legend_columns[1].markdown(
-                    '<span style="color:#2563EB;font-size:1.15rem">●</span> **Iterative** · solid',
-                    unsafe_allow_html=True,
-                )
-                legend_columns[2].markdown(
-                    '<span style="color:#8B5CF6;font-size:1.15rem">◆</span> **MRV** · dashed',
-                    unsafe_allow_html=True,
-                )
-                legend_columns[3].markdown(
-                    '<span style="color:#F97316;font-size:1.15rem">▲</span> **ML-guided** · dotted',
-                    unsafe_allow_html=True,
-                )
-    
-                recursive_values = size_frame.loc[
-                    size_frame["algorithm"] == "Recursive", selected_metric
-                ]
-                iterative_values = size_frame.loc[
-                    size_frame["algorithm"] == "Iterative", selected_metric
-                ]
-                if (
-                    not recursive_values.empty
-                    and not iterative_values.empty
-                    and float(recursive_values.iloc[0]) == float(iterative_values.iloc[0])
-                ):
-                    st.caption(
-                        "Recursive and Iterative have identical values for this board size. "
-                        "Their strokes overlap by definition; the dashed line and hollow "
-                        "square/circle markers distinguish the two without changing data."
-                    )
-    
-                st.subheader(f"Results for N={chosen_size}")
-                metric_columns = st.columns(4)
-                for index, algorithm in enumerate(("Recursive", "Iterative", "MRV", "ML-guided")):
-                    match = size_frame[size_frame["algorithm"] == algorithm]
-                    with metric_columns[index]:
-                        st.markdown(f"**{algorithm}**")
-                        if match.empty:
-                            st.caption("No data")
-                        else:
-                            record = match.iloc[0]
-                            st.metric(
-                                "Median runtime",
-                                f"{record['median_execution_time_ms']:.4f} ms",
-                            )
-                            st.metric(
-                                "Explored states",
-                                f"{record['median_explored_states']:,.0f}",
-                            )
-    
-                st.subheader("Benchmark summary table")
-                st.dataframe(
-                    summary.sort_values(["board_size", "algorithm"]),
-                    width="stretch",
-                    hide_index=True,
-                )
-    
-                if uploaded_summary is None and RUNS_PATH.is_file():
-                    with st.expander("Inspect individual timed runs"):
-                        try:
-                            runs = pd.read_csv(RUNS_PATH)
-                            run_algorithms = sorted(runs["algorithm"].unique())
-                            selected_algorithms = st.multiselect(
-                                "Algorithms",
-                                run_algorithms,
-                                default=run_algorithms,
-                            )
-                            st.dataframe(
-                                runs[runs["algorithm"].isin(selected_algorithms)],
-                                width="stretch",
-                                hide_index=True,
-                            )
-                        except (OSError, pd.errors.ParserError, KeyError) as exc:
-                            st.warning(f"Could not read individual runs: {exc}")
-    
-    
+
+            st.subheader(f"Results for N={chosen_size}")
+            metric_columns = st.columns(4)
+            for index, algorithm in enumerate(("Recursive", "Iterative", "MRV", "ML-guided")):
+                match = size_frame[size_frame["algorithm"] == algorithm]
+                with metric_columns[index]:
+                    st.markdown(f"**{algorithm}**")
+                    if match.empty:
+                        st.caption("No data")
+                    else:
+                        record = match.iloc[0]
+                        st.metric(
+                            "Median runtime",
+                            f"{record['median_execution_time_ms']:.4f} ms",
+                        )
+                        st.metric(
+                            "Explored states",
+                            f"{record['median_explored_states']:,.0f}",
+                        )
+
+            st.subheader("Benchmark summary table")
+            st.dataframe(
+                summary.sort_values(["board_size", "algorithm"]),
+                width="stretch",
+                hide_index=True,
+            )
+
+            if uploaded_summary is None and RUNS_PATH.is_file():
+                with st.expander("Inspect individual timed runs"):
+                    try:
+                        runs = pd.read_csv(RUNS_PATH)
+                        run_algorithms = sorted(runs["algorithm"].unique())
+                        selected_algorithms = st.multiselect(
+                            "Algorithms",
+                            run_algorithms,
+                            default=run_algorithms,
+                        )
+                        st.dataframe(
+                            runs[runs["algorithm"].isin(selected_algorithms)],
+                            width="stretch",
+                            hide_index=True,
+                        )
+                    except (OSError, pd.errors.ParserError, KeyError) as exc:
+                        st.warning(f"Could not read individual runs: {exc}")
+
+
 elif page == "Solver visualizer":
     st.header("Solver visualizer")
     st.write(
         "Run a solver and move through its recorded events. ML candidate scores "
         "are shown at each state where candidates are ranked."
-    )
-    st.caption(
-        "The original interactive solvers support N≤12. Larger-board timing "
-        "results are available in the separate ML optimisation trial page; "
-        "that compiled experiment is not wired into this event-by-event visualizer."
     )
 
     controls = st.columns(2)
@@ -912,6 +559,7 @@ elif page == "Solver visualizer":
                 f"Predictions: {stats.get('model_predictions', 0)} · "
                 f"predict_proba time: {stats.get('inference_ms', 0):.3f} ms"
             )
+
 
 
 elif page == "Recorded ML optimisation results (N=8–24)":
