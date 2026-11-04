@@ -795,124 +795,124 @@ if page == "Benchmark dashboard":
                             st.warning(f"Could not read individual runs: {exc}")
     
     
-    elif page == "Solver visualizer":
-        st.header("Solver visualizer")
-        st.write(
-            "Run a solver and move through its recorded events. ML candidate scores "
-            "are shown at each state where candidates are ranked."
+elif page == "Solver visualizer":
+    st.header("Solver visualizer")
+    st.write(
+        "Run a solver and move through its recorded events. ML candidate scores "
+        "are shown at each state where candidates are ranked."
+    )
+    st.caption(
+        "The original interactive solvers support N≤12. Larger-board timing "
+        "results are available in the separate ML optimisation trial page; "
+        "that compiled experiment is not wired into this event-by-event visualizer."
+    )
+
+    controls = st.columns(2)
+    with controls[0]:
+        n = st.selectbox("Board size", list(range(4, 13)), index=4)
+    with controls[1]:
+        algorithm = st.selectbox(
+            "Algorithm",
+            ("Recursive", "Iterative", "MRV", "ML-guided"),
         )
-        st.caption(
-            "The original interactive solvers support N≤12. Larger-board timing "
-            "results are available in the separate ML optimisation trial page; "
-            "that compiled experiment is not wired into this event-by-event visualizer."
-        )
-    
-        controls = st.columns(2)
-        with controls[0]:
-            n = st.selectbox("Board size", list(range(4, 13)), index=4)
-        with controls[1]:
-            algorithm = st.selectbox(
-                "Algorithm",
-                ("Recursive", "Iterative", "MRV", "ML-guided"),
-            )
-    
-        run_clicked = st.button("Run solver", type="primary")
-        if run_clicked:
-            try:
-                if algorithm == "Recursive":
-                    solution, stats, events = solve_n_queens(n)
-                elif algorithm == "Iterative":
-                    solution, stats, events = solve_n_queens_iterative(n)
-                elif algorithm == "MRV":
-                    solution, stats, events = solve_n_queens_mrv(n)
-                else:
-                    with st.spinner("Loading the trained model and running ML-guided search..."):
-                        model = load_trained_model()
-                        solution, stats, events = solve_n_queens_ml(n, model=model)
-    
-                st.session_state["viz_result"] = {
-                    "n": n,
-                    "algorithm": algorithm,
-                    "solution": solution,
-                    "stats": stats,
-                    "events": events,
-                }
-            except FileNotFoundError as exc:
-                st.error(f"{exc} Train the model with 'python -m src.train_model' first.")
-            except Exception as exc:
-                st.exception(exc)
-    
-        result = st.session_state.get("viz_result")
-        if result:
-            n_result = result["n"]
-            events = result["events"]
-            stats = result["stats"]
-            if result["solution"] is None:
-                st.warning(f"No solution exists for N={n_result}.")
+
+    run_clicked = st.button("Run solver", type="primary")
+    if run_clicked:
+        try:
+            if algorithm == "Recursive":
+                solution, stats, events = solve_n_queens(n)
+            elif algorithm == "Iterative":
+                solution, stats, events = solve_n_queens_iterative(n)
+            elif algorithm == "MRV":
+                solution, stats, events = solve_n_queens_mrv(n)
             else:
-                st.success(
-                    f"{result['algorithm']} found a valid solution for N={n_result}."
+                with st.spinner("Loading the trained model and running ML-guided search..."):
+                    model = load_trained_model()
+                    solution, stats, events = solve_n_queens_ml(n, model=model)
+
+            st.session_state["viz_result"] = {
+                "n": n,
+                "algorithm": algorithm,
+                "solution": solution,
+                "stats": stats,
+                "events": events,
+            }
+        except FileNotFoundError as exc:
+            st.error(f"{exc} Train the model with 'python -m src.train_model' first.")
+        except Exception as exc:
+            st.exception(exc)
+
+    result = st.session_state.get("viz_result")
+    if result:
+        n_result = result["n"]
+        events = result["events"]
+        stats = result["stats"]
+        if result["solution"] is None:
+            st.warning(f"No solution exists for N={n_result}.")
+        else:
+            st.success(
+                f"{result['algorithm']} found a valid solution for N={n_result}."
+            )
+
+        st.subheader("Search metrics")
+        stat_columns = st.columns(4)
+        stat_values = (
+            ("Explored states", stats.get("explored_states", 0)),
+            ("Backtracks", stats.get("backtracks", 0)),
+            ("Candidate checks", stats.get("candidate_checks", 0)),
+            ("Recorded events", len(events)),
+        )
+        for column, (label, value) in zip(stat_columns, stat_values):
+            column.metric(label, f"{value:,}")
+
+        total_events = len(events)
+        step = st.slider(
+            "Replay event",
+            min_value=0,
+            max_value=total_events,
+            value=total_events,
+            help="0 shows the empty board; the maximum shows the final recorded state.",
+        )
+        board = replay_events(events, n_result, step)
+        current_event = events[step - 1] if step > 0 else None
+        board_col, detail_col = st.columns([1, 1.2])
+        with board_col:
+            st.markdown(f"**Board state · event {step}/{total_events}**")
+            render_board(board, n_result)
+        with detail_col:
+            st.markdown("**Current event**")
+            if current_event is None:
+                st.caption("Initial empty board")
+            else:
+                st.json(current_event)
+
+            rankings = [
+                event
+                for event in events[:step]
+                if event.get("action") == "rank_candidates"
+            ]
+            if rankings:
+                latest_ranking = rankings[-1]
+                st.markdown(
+                    f"**Candidate ranking for row {latest_ranking['row']}**"
                 )
-    
-            st.subheader("Search metrics")
-            stat_columns = st.columns(4)
-            stat_values = (
-                ("Explored states", stats.get("explored_states", 0)),
-                ("Backtracks", stats.get("backtracks", 0)),
-                ("Candidate checks", stats.get("candidate_checks", 0)),
-                ("Recorded events", len(events)),
-            )
-            for column, (label, value) in zip(stat_columns, stat_values):
-                column.metric(label, f"{value:,}")
-    
-            total_events = len(events)
-            step = st.slider(
-                "Replay event",
-                min_value=0,
-                max_value=total_events,
-                value=total_events,
-                help="0 shows the empty board; the maximum shows the final recorded state.",
-            )
-            board = replay_events(events, n_result, step)
-            current_event = events[step - 1] if step > 0 else None
-            board_col, detail_col = st.columns([1, 1.2])
-            with board_col:
-                st.markdown(f"**Board state · event {step}/{total_events}**")
-                render_board(board, n_result)
-            with detail_col:
-                st.markdown("**Current event**")
-                if current_event is None:
-                    st.caption("Initial empty board")
-                else:
-                    st.json(current_event)
-    
-                rankings = [
-                    event
-                    for event in events[:step]
-                    if event.get("action") == "rank_candidates"
-                ]
-                if rankings:
-                    latest_ranking = rankings[-1]
-                    st.markdown(
-                        f"**Candidate ranking for row {latest_ranking['row']}**"
+                ranking_frame = pd.DataFrame(latest_ranking["candidates"])
+                if not ranking_frame.empty:
+                    st.dataframe(
+                        ranking_frame,
+                        width="stretch",
+                        hide_index=True,
                     )
-                    ranking_frame = pd.DataFrame(latest_ranking["candidates"])
-                    if not ranking_frame.empty:
-                        st.dataframe(
-                            ranking_frame,
-                            width="stretch",
-                            hide_index=True,
-                        )
-                    else:
-                        st.caption("No legal candidates at this state.")
-    
-            if "inference_seconds" in stats:
-                st.caption(
-                    f"Model inference calls: {stats.get('ml_inference_calls', 0)} · "
-                    f"Predictions: {stats.get('model_predictions', 0)} · "
-                    f"predict_proba time: {stats.get('inference_ms', 0):.3f} ms"
-                )
-    
+                else:
+                    st.caption("No legal candidates at this state.")
+
+        if "inference_seconds" in stats:
+            st.caption(
+                f"Model inference calls: {stats.get('ml_inference_calls', 0)} · "
+                f"Predictions: {stats.get('model_predictions', 0)} · "
+                f"predict_proba time: {stats.get('inference_ms', 0):.3f} ms"
+            )
+
 
 elif page == "Recorded ML optimisation results (N=8–24)":
     st.header("ML optimisation trial · Larger board sizes")
