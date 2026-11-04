@@ -164,7 +164,7 @@ if page == "Benchmark dashboard":
         live_sizes = st.multiselect(
             "Board sizes to execute",
             options=list(range(4, 25)),
-            default=[8, 10, 12, 14, 16, 18, 20, 24],
+            default=list(range(4, 25)),
             help=(
                 "Choose one board size for a focused live comparison, or several "
                 "sizes to build a live performance curve. The maximum is 24×24."
