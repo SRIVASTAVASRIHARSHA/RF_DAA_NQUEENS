@@ -145,7 +145,7 @@ def build_final_report(
         f"- Warm-up runs: {metadata.get('warmups', 'Not recorded')}",
         f"- Memory profiling repetitions: {metadata.get('memory_repeats', 'Not recorded')}",
         "- Model loading is excluded from measured solver runtime.",
-        "- MRV dynamically assigns rows out of order and recomputes domains for remaining rows; its candidate_checks count is not directly equivalent to the fixed-row solvers candidate checks."
+        "- MRV dynamically assigns rows out of order and recomputes domains for remaining rows; its candidate_checks count is not directly equivalent to the fixed-row solvers candidate checks.",
         (
             "- ML total runtime includes feature preparation, model inference, candidate "
             "ranking, and backtracking. The separately reported inference time is a "
