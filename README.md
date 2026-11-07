@@ -9,11 +9,12 @@ A comparative DAA project investigating the N-Queens problem through conventiona
 - **Phase 3 complete:** exhaustive candidate dataset generation, fixed-width feature extraction, reproducible train/validation split grouped by partial-board state.
 - **Phase 4 complete:** Random Forest training pipeline, validation metrics, candidate-ranking evaluation, feature importance, and confusion-matrix reporting.
 - **Phase 5 complete:** ML-guided iterative solver with probability-ranked candidate ordering and complete backtracking.
-- **Phase 6 implementation complete:** repeatable benchmark runner for all four solvers, per-run and summary CSVs, runtime/search/memory plots, and benchmark tests. The actual experiment results must be generated on the target Mac because timings are hardware- and environment-dependent.
-- **Phase 7 implementation complete:** Streamlit benchmark dashboard, solver-event replay with ML candidate rankings, model/dataset diagnostics, and a Markdown report generator driven by real experiment outputs.
-- **Research extensions implemented:** MRV heuristic baseline, comparison of three classifier families, feature-group ablation, unseen-board-size generalization, and all-solutions enumeration.
+- **Phase 6 complete and executed locally:** the four-algorithm benchmark was run on the team's MacBook Air M5 for N=4, 6, 8, 10, and 12 with 30 timed repetitions per algorithm and size.
+- **Phase 7 complete and executed locally:** the Streamlit dashboard starts successfully, and the final Markdown report was generated from the local experiment outputs.
+- **Research extensions executed:** classifier comparison, feature-group ablation, and held-out-size generalisation outputs were generated.
+- **Verification:** all 70 automated tests passed after the reporting syntax fix on 7 November 2026.
 
-The dashboard and report still need local verification. The additional research experiment commands generate evidence files; they are not run automatically and must not be presented as completed measurements until executed.
+The latest measurements are hardware- and environment-dependent. Retain the local benchmark metadata, per-run CSV, model metrics, dataset summary, and research CSVs with the final submission. The current primary ML solver reduces the explored-state count but is slower in end-to-end runtime than the conventional solvers at all tested sizes because inference and feature preparation dominate.
 
 ## Algorithms
 
@@ -47,21 +48,20 @@ The fixed feature schema contains 18 numerical columns and supports board sizes 
 
 ## Random Forest validation summary
 
-The recorded validation run used 37,426 training samples and 9,333 validation samples.
+The latest console-verified validation run (7 November 2026) used 37,426 training samples and 9,333 validation samples.
 
-| Metric | Result |
+| Metric | Latest recorded result |
 |---|---:|
-| Accuracy | 83.11% |
-| Balanced accuracy | 67.71% |
-| Positive-class precision | 52.10% |
-| Positive-class recall | 44.00% |
-| Positive-class F1 | 47.71% |
-| ROC-AUC | 0.7813 |
-| PR-AUC | 0.5567 |
-| ML top-1 hit rate on solvable states | 80.70% |
+| Accuracy | 83.16% |
+| Balanced accuracy | 67.76% |
+| Positive-class F1 | 47.81% |
+| ROC-AUC | 0.7805 |
+| PR-AUC | 0.5573 |
+| ML top-1 hit rate on solvable states | 80.77% |
 | Ascending-column baseline | 77.07% |
+| Mean reciprocal rank on solvable states | 0.8955 |
 
-The ranking result is a preliminary improvement only. It does not establish an end-to-end speedup; the Phase 6 benchmark measures full solver runtime and search effort, including the ML feature preparation and prediction work.
+Positive-class precision and recall were not printed in the supplied terminal summary and are not stated here. The model's ranking metrics are not end-to-end runtime metrics. The ranking improvement is modest and does not establish a speedup; the full solver benchmark includes feature preparation and prediction overhead. These latest values supersede the older example metrics in the tracked results snapshot.
 
 ## Setup
 
@@ -145,6 +145,8 @@ The runner writes:
 - `benchmark_metadata.json`: Python/platform details and run configuration.
 - `benchmark_runtime.png`, `benchmark_explored_states.png`, and `benchmark_candidate_checks.png`.
 - `benchmark_inference_overhead.png` and `benchmark_memory.png`.
+
+**Latest local result (7 November 2026):** median RF-guided runtimes were 10.3144, 29.5412, 20.1854, 25.4744, and 37.7043 ms for N=4, 6, 8, 10, and 12. The corresponding primary recursive/iterative/MRV solvers were faster at every tested size. The RF-guided solver explored fewer states, but model inference and feature preparation dominated its total runtime. Use the exact local CSV and metadata files for full reporting; do not claim an end-to-end speedup from the ranking hit-rate improvement alone.
 
 **Timing interpretation:** total execution time wraps the complete solver call. For ML this includes candidate feature extraction, DataFrame construction, `predict_proba`, ranking, and backtracking. Model loading is excluded. The separate inference column is the time spent inside the model's `predict_proba` call only; it is a subset of ML total time and must not be added again. Recursive, iterative, and MRV solvers have zero model inference time. MRV dynamically recomputes legal domains across unassigned rows; its candidate-check count has a different operational meaning from the fixed-row solvers.
 
