@@ -1,34 +1,21 @@
 {
   "model": "RandomForestClassifier",
-  "scikit_learn_version": "1.8.0",
-  "validation_samples": 9333,
   "training_samples": 37426,
+  "validation_samples": 9333,
   "feature_count": 18,
   "positive_class": 1,
-  "classification_threshold": 0.5,
-  "probabilities_are_used_for": "candidate ranking; the backtracking solver retains every legal candidate",
-  "accuracy": 0.8311368263152256,
-  "balanced_accuracy": 0.6770845869601403,
-  "precision_positive": 0.5210144927536232,
-  "recall_positive": 0.44002447980416154,
-  "f1_positive": 0.47710683477106836,
-  "roc_auc": 0.7812711692357637,
-  "average_precision_pr_auc": 0.5566976121326448,
-  "confusion_matrix_labels_0_1": [[7038, 661], [915, 719]],
-  "training_seconds": 2.2654773429999295,
-  "validation_inference_seconds": 0.13827353499982564,
-  "validation_inference_ms_per_candidate": 0.014815550733936103,
+  "accuracy": 0.8316,
+  "balanced_accuracy": 0.6776,
+  "f1_positive": 0.4781,
+  "roc_auc": 0.7805,
+  "average_precision_pr_auc": 0.5573,
   "ranking_metrics": {
     "candidate_parent_states": 6012,
     "states_with_at_least_one_completing_candidate": 1378,
-    "top1_positive_rate_all_states": 0.18496340652029275,
-    "top1_hit_rate_solvable_states": 0.806966618287373,
-    "ascending_column_baseline_top1_hit_rate_solvable_states": 0.7706821480406386,
-    "mean_reciprocal_rank_solvable_states": 0.895561199806483
-  },
-  "classification_report": {
-    "cannot_complete": {"precision": 0.8849490758204451, "recall": 0.914144694116119, "f1-score": 0.8993099923332482, "support": 7699},
-    "can_complete": {"precision": 0.5210144927536232, "recall": 0.44002447980416154, "f1-score": 0.47710683477106836, "support": 1634}
+    "top1_positive_rate_all_states": 0.1851297405,
+    "top1_hit_rate_solvable_states": 0.8076923077,
+    "ascending_column_baseline_top1_hit_rate_solvable_states": 0.770682148,
+    "mean_reciprocal_rank_solvable_states": 0.8955007257
   },
   "training_configuration": {
     "n_estimators": 150,
@@ -39,5 +26,5 @@
     "class_weight": "balanced_subsample",
     "random_state": 42
   },
-  "note": "Metrics are from an isolated Python 3.13.5 / scikit-learn 1.8.0 run. Re-running under another scikit-learn version may produce slightly different results."
+  "note": "Updated from the team's latest terminal output on 7 November 2026. Precision, recall, confusion matrix, and validation inference duration were not included in that output and are therefore omitted. These values supersede the earlier tracked snapshot for this primary model."
 }
